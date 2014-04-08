@@ -17,7 +17,11 @@
 
 
 /* tags for values visible from Lua */
-#define LAST_TAG	LUA_TTHREAD
+#if defined(LUA_TINT) && (LUA_TINT > LUA_TTHREAD)
+# define LAST_TAG   LUA_TINT
+#else
+# define LAST_TAG	LUA_TTHREAD
+#endif
 
 #define NUM_TAGS	(LAST_TAG+1)
 
@@ -59,117 +63,100 @@ typedef struct GCheader {
 /*
 ** Union of all Lua values
 */
-#if defined( LUA_PACK_VALUE ) && defined( ELUA_ENDIAN_BIG )
-typedef union {
-  struct {
-    int _pad0;
-    GCObject *gc;
-  };
-  struct {
-    int _pad1;
-    void *p;
-  };
-  lua_Number n;
-  struct {
-    int _pad2;
-    int b;
-  };
-} Value;
-#else // #if defined( LUA_PACK_VALUE ) && defined( ELUA_ENDIAN_BIG )
 typedef union {
   GCObject *gc;
   void *p;
+#ifdef LNUM_COMPLEX
+  lua_Complex n;
+#else
   lua_Number n;
+#endif
+#ifdef LUA_TINT
+  lua_Integer i;
+#endif
   int b;
 } Value;
-#endif // #if defined( LUA_PACK_VALUE ) && defined( ELUA_ENDIAN_BIG )
+
 
 /*
 ** Tagged Values
 */
 
-#ifndef LUA_PACK_VALUE
 #define TValuefields	Value value; int tt
-#define LUA_TVALUE_NIL {NULL}, LUA_TNIL
 
 typedef struct lua_TValue {
   TValuefields;
 } TValue;
-#else // #ifndef LUA_PACK_VALUE
-#ifdef ELUA_ENDIAN_LITTLE
-#define TValuefields union { \
-  struct { \
-    int _pad0; \
-    int tt_sig; \
-  } _ts; \
-  struct { \
-    int _pad; \
-    short tt; \
-    short sig; \
-  } _t; \
-  Value value; \
-}
-#define LUA_TVALUE_NIL {0, add_sig(LUA_TNIL)}
-#else // #ifdef ELUA_ENDIAN_LITTLE
-#define TValuefields union { \
-  struct { \
-    int tt_sig; \
-    int _pad0; \
-  } _ts; \
-  struct { \
-    short sig; \
-    short tt; \
-    int _pad; \
-  } _t; \
-  Value value; \
-}
-#define LUA_TVALUE_NIL {add_sig(LUA_TNIL), 0}
-#endif // #ifdef ELUA_ENDIAN_LITTLE
-#define LUA_NOTNUMBER_SIG (-1)
-#define add_sig(tt) ( 0xffff0000 | (tt) )
 
-typedef TValuefields TValue;
-#endif // #ifndef LUA_PACK_VALUE
 
 /* Macros to test type */
-#ifndef LUA_PACK_VALUE
 #define ttisnil(o)	(ttype(o) == LUA_TNIL)
-#define ttisnumber(o)	(ttype(o) == LUA_TNUMBER)
+
+#ifdef LUA_TINT
+# if (LUA_TINT & 0x0f) == LUA_TNUMBER
+#  define ttisnumber(o) ((ttype(o) & 0x0f) == LUA_TNUMBER)
+# else
+#  define ttisnumber(o) ((ttype(o) == LUA_TINT) || (ttype(o) == LUA_TNUMBER))
+# endif
+# define ttisint(o) (ttype(o) == LUA_TINT)
+#else
+# define ttisnumber(o) (ttype(o) == LUA_TNUMBER)
+#endif
+
+#ifdef LNUM_COMPLEX
+# define ttiscomplex(o) ((ttype(o) == LUA_TNUMBER) && (nvalue_img_fast(o)!=0))
+#endif
 #define ttisstring(o)	(ttype(o) == LUA_TSTRING)
 #define ttistable(o)	(ttype(o) == LUA_TTABLE)
+#define ttisrotable(o)  (ttype(o) == LUA_TROTABLE)
+#define ttislightfunction(o) (ttype(o) == LUA_TLIGHTFUNCTION)
 #define ttisfunction(o)	(ttype(o) == LUA_TFUNCTION)
 #define ttisboolean(o)	(ttype(o) == LUA_TBOOLEAN)
 #define ttisuserdata(o)	(ttype(o) == LUA_TUSERDATA)
 #define ttisthread(o)	(ttype(o) == LUA_TTHREAD)
 #define ttislightuserdata(o)	(ttype(o) == LUA_TLIGHTUSERDATA)
-#define ttisrotable(o) (ttype(o) == LUA_TROTABLE)
-#define ttislightfunction(o)  (ttype(o) == LUA_TLIGHTFUNCTION)
-#else // #ifndef LUA_PACK_VALUE
-#define ttisnil(o) (ttype_sig(o) == add_sig(LUA_TNIL))
-#define ttisnumber(o)  ((o)->_t.sig != LUA_NOTNUMBER_SIG)
-#define ttisstring(o)  (ttype_sig(o) == add_sig(LUA_TSTRING))
-#define ttistable(o) (ttype_sig(o) == add_sig(LUA_TTABLE))
-#define ttisfunction(o)  (ttype_sig(o) == add_sig(LUA_TFUNCTION))
-#define ttisboolean(o) (ttype_sig(o) == add_sig(LUA_TBOOLEAN))
-#define ttisuserdata(o)  (ttype_sig(o) == add_sig(LUA_TUSERDATA))
-#define ttisthread(o)  (ttype_sig(o) == add_sig(LUA_TTHREAD))
-#define ttislightuserdata(o) (ttype_sig(o) == add_sig(LUA_TLIGHTUSERDATA))
-#define ttisrotable(o) (ttype_sig(o) == add_sig(LUA_TROTABLE))
-#define ttislightfunction(o)  (ttype_sig(o) == add_sig(LUA_TLIGHTFUNCTION))
-#endif // #ifndef LUA_PACK_VALUE
 
 /* Macros to access values */
-#ifndef LUA_PACK_VALUE
 #define ttype(o)	((o)->tt)
-#else // #ifndef LUA_PACK_VALUE
-#define ttype(o)	((o)->_t.sig == LUA_NOTNUMBER_SIG ? (o)->_t.tt : LUA_TNUMBER)
-#define ttype_sig(o)	((o)->_ts.tt_sig)
-#endif // #ifndef LUA_PACK_VALUE
 #define gcvalue(o)	check_exp(iscollectable(o), (o)->value.gc)
 #define pvalue(o)	check_exp(ttislightuserdata(o), (o)->value.p)
 #define rvalue(o)	check_exp(ttisrotable(o), (o)->value.p)
 #define fvalue(o) check_exp(ttislightfunction(o), (o)->value.p)
-#define nvalue(o)	check_exp(ttisnumber(o), (o)->value.n)
+
+#if defined(LUA_TINT) && (LUA_TINT&0x0f == LUA_TNUMBER)
+/* expects never to be called on <0 (LUA_TNONE) */
+# define ttype_ext(o) ( ttype(o) & 0x0f )
+#elif defined(LUA_TINT)
+# define ttype_ext(o) ( ttype(o) == LUA_TINT ? LUA_TNUMBER : ttype(o) )
+#else
+# define ttype_ext(o) ttype(o)
+#endif
+
+/* '_fast' variants are for cases where 'ttype(o)' is known to be LUA_TNUMBER
+ */
+#ifdef LNUM_COMPLEX
+# ifndef LUA_TINT
+#  error "LNUM_COMPLEX only allowed with LNUM_INTxx defined (can be changed)"
+# endif
+# define nvalue_complex_fast(o) check_exp( ttype(o)==LUA_TNUMBER, (o)->value.n )   
+# define nvalue_fast(o)     ( _LF(creal) ( nvalue_complex_fast(o) ) )
+# define nvalue_img_fast(o) ( _LF(cimag) ( nvalue_complex_fast(o) ) )
+# define nvalue_complex(o) check_exp( ttisnumber(o), (ttype(o)==LUA_TINT) ? (o)->value.i : (o)->value.n )
+# define nvalue_img(o) check_exp( ttisnumber(o), (ttype(o)==LUA_TINT) ? 0 : _LF(cimag)( (o)->value.n ) ) 
+# define nvalue(o) check_exp( ttisnumber(o), (ttype(o)==LUA_TINT) ? cast_num((o)->value.i) : _LF(creal)((o)->value.n) ) 
+/* */
+#elif defined(LUA_TINT)
+# define nvalue(o)	check_exp( ttisnumber(o), (ttype(o)==LUA_TINT) ? cast_num((o)->value.i) : (o)->value.n )
+# define nvalue_fast(o) check_exp( ttype(o)==LUA_TNUMBER, (o)->value.n )   
+#else
+# define nvalue(o)	check_exp( ttisnumber(o), (o)->value.n )
+# define nvalue_fast(o) nvalue(o)
+#endif
+
+#ifdef LUA_TINT
+# define ivalue(o)	check_exp( ttype(o)==LUA_TINT, (o)->value.i )
+#endif
+
 #define rawtsvalue(o)	check_exp(ttisstring(o), &(o)->value.gc->ts)
 #define tsvalue(o)	(&rawtsvalue(o)->tsv)
 #define rawuvalue(o)	check_exp(ttisuserdata(o), &(o)->value.gc->u)
@@ -184,28 +171,40 @@ typedef TValuefields TValue;
 /*
 ** for internal debug only
 */
-#ifndef LUA_PACK_VALUE
 #define checkconsistency(obj) \
   lua_assert(!iscollectable(obj) || (ttype(obj) == (obj)->value.gc->gch.tt))
 
 #define checkliveness(g,obj) \
   lua_assert(!iscollectable(obj) || \
   ((ttype(obj) == (obj)->value.gc->gch.tt) && !isdead(g, (obj)->value.gc)))
-#else // #ifndef LUA_PACK_VALUE
-#define checkconsistency(obj) \
-  lua_assert(!iscollectable(obj) || (ttype(obj) == (obj)->value.gc->gch._t.tt))
 
-#define checkliveness(g,obj) \
-  lua_assert(!iscollectable(obj) || \
-  ((ttype(obj) == (obj)->value.gc->gch._t.tt) && !isdead(g, (obj)->value.gc)))
-#endif // #ifndef LUA_PACK_VALUE
 
 /* Macros to set values */
-#ifndef LUA_PACK_VALUE
 #define setnilvalue(obj) ((obj)->tt=LUA_TNIL)
 
-#define setnvalue(obj,x) \
-  { lua_Number i_x = (x); TValue *i_o=(obj); i_o->value.n=i_x; i_o->tt=LUA_TNUMBER; }
+/* Must not have side effects, 'x' may be expression.
+*/
+#define setnvalue(obj,x) { lua_Number i_x = (x); TValue *i_o=(obj); i_o->value.n=i_x; i_o->tt=LUA_TNUMBER; }
+
+#ifdef LUA_TINT
+# define setivalue(obj,x) { lua_Integer i_x = (x); TValue *i_o=(obj); i_o->value.i=i_x; i_o->tt=LUA_TINT; }
+#else
+# define setivalue(obj,x) setnvalue(obj,cast_num(x))
+#endif
+
+/* Note: Complex always has "inline", both are C99.
+*/
+#ifdef LNUM_COMPLEX
+  static inline void setnvalue_complex_fast( TValue *obj, lua_Complex x ) {
+    lua_assert( _LF(cimag)(x) != 0 );
+    obj->value.n= x; obj->tt= LUA_TNUMBER;
+  }
+  static inline void setnvalue_complex( TValue *obj, lua_Complex x ) {
+    if (_LF(cimag)(x) == 0) { setnvalue(obj, _LF(creal)(x)); }
+    else { obj->value.n= x; obj->tt= LUA_TNUMBER; }
+  }
+#endif
+
 
 #define setpvalue(obj,x) \
   { void *i_x = (x); TValue *i_o=(obj); i_o->value.p=i_x; i_o->tt=LUA_TLIGHTUSERDATA; }
@@ -255,69 +254,11 @@ typedef TValuefields TValue;
     i_o->value.gc=i_x; i_o->tt=LUA_TPROTO; \
     checkliveness(G(L),i_o); }
 
-
-
-
 #define setobj(L,obj1,obj2) \
   { const TValue *o2=(obj2); TValue *o1=(obj1); \
     o1->value = o2->value; o1->tt=o2->tt; \
     checkliveness(G(L),o1); }
-#else // #ifndef LUA_PACK_VALUE
-#define setnilvalue(obj) ( ttype_sig(obj) = add_sig(LUA_TNIL) )
 
-#define setnvalue(obj,x) \
-  { TValue *i_o=(obj); i_o->value.n=(x); }
-
-#define setpvalue(obj,x) \
-  { TValue *i_o=(obj); i_o->value.p=(x); i_o->_ts.tt_sig=add_sig(LUA_TLIGHTUSERDATA);}
-
-#define setrvalue(obj,x) \
-  { TValue *i_o=(obj); i_o->value.p=(x); i_o->_ts.tt_sig=add_sig(LUA_TROTABLE);}
-
-#define setfvalue(obj,x) \
-  { TValue *i_o=(obj); i_o->value.p=(x); i_o->_ts.tt_sig=add_sig(LUA_TLIGHTFUNCTION);}
-
-#define setbvalue(obj,x) \
-  { TValue *i_o=(obj); i_o->value.b=(x); i_o->_ts.tt_sig=add_sig(LUA_TBOOLEAN);}
-
-#define setsvalue(L,obj,x) \
-  { TValue *i_o=(obj); \
-    i_o->value.gc=cast(GCObject *, (x)); i_o->_ts.tt_sig=add_sig(LUA_TSTRING); \
-    checkliveness(G(L),i_o); }
-
-#define setuvalue(L,obj,x) \
-  { TValue *i_o=(obj); \
-    i_o->value.gc=cast(GCObject *, (x)); i_o->_ts.tt_sig=add_sig(LUA_TUSERDATA); \
-    checkliveness(G(L),i_o); }
-
-#define setthvalue(L,obj,x) \
-  { TValue *i_o=(obj); \
-    i_o->value.gc=cast(GCObject *, (x)); i_o->_ts.tt_sig=add_sig(LUA_TTHREAD); \
-    checkliveness(G(L),i_o); }
-
-#define setclvalue(L,obj,x) \
-  { TValue *i_o=(obj); \
-    i_o->value.gc=cast(GCObject *, (x)); i_o->_ts.tt_sig=add_sig(LUA_TFUNCTION); \
-    checkliveness(G(L),i_o); }
-
-#define sethvalue(L,obj,x) \
-  { TValue *i_o=(obj); \
-    i_o->value.gc=cast(GCObject *, (x)); i_o->_ts.tt_sig=add_sig(LUA_TTABLE); \
-    checkliveness(G(L),i_o); }
-
-#define setptvalue(L,obj,x) \
-  { TValue *i_o=(obj); \
-    i_o->value.gc=cast(GCObject *, (x)); i_o->_ts.tt_sig=add_sig(LUA_TPROTO); \
-    checkliveness(G(L),i_o); }
-
-
-
-
-#define setobj(L,obj1,obj2) \
-  { const TValue *o2=(obj2); TValue *o1=(obj1); \
-    o1->value = o2->value; \
-    checkliveness(G(L),o1); }
-#endif // #ifndef LUA_PACK_VALUE
 
 /*
 ** different types of sets, according to destination
@@ -338,15 +279,13 @@ typedef TValuefields TValue;
 #define setobj2n	setobj
 #define setsvalue2n	setsvalue
 
-#ifndef LUA_PACK_VALUE
 #define setttype(obj, tt) (ttype(obj) = (tt))
-#else // #ifndef LUA_PACK_VALUE
-/* considering it used only in lgc to set LUA_TDEADKEY */
-/* we could define it this way */
-#define setttype(obj, _tt) ( ttype_sig(obj) = add_sig(_tt) )
-#endif // #ifndef LUA_PACK_VALUE
 
-#define iscollectable(o)	(ttype(o) >= LUA_TSTRING)
+#if defined(LUA_TINT) && (LUA_TINT >= LUA_TSTRING)
+# define iscollectable(o)	((ttype(o) >= LUA_TSTRING) && (ttype(o) != LUA_TINT))
+#else
+# define iscollectable(o)	(ttype(o) >= LUA_TSTRING)
+#endif
 
 
 
@@ -360,6 +299,7 @@ typedef union TString {
   L_Umaxalign dummy;  /* ensures maximum alignment for strings */
   struct {
     CommonHeader;
+    lu_byte reserved;
     unsigned int hash;
     size_t len;
   } tsv;
@@ -479,7 +419,6 @@ typedef union Closure {
 ** Tables
 */
 
-#ifndef LUA_PACK_VALUE
 typedef union TKey {
   struct {
     TValuefields;
@@ -488,17 +427,6 @@ typedef union TKey {
   TValue tvk;
 } TKey;
 
-#define LUA_TKEY_NIL {LUA_TVALUE_NIL, NULL}
-#else // #ifndef LUA_PACK_VALUE
-typedef struct TKey {
-  TValue tvk;
-  struct {
-     struct Node *next; /* for chaining */
-  } nk;
-} TKey;
-
-#define LUA_TKEY_NIL {LUA_TVALUE_NIL}, {NULL}
-#endif // #ifndef LUA_PACK_VALUE
 
 typedef struct Node {
   TValue i_val;
@@ -517,6 +445,7 @@ typedef struct Table {
   GCObject *gclist;
   int sizearray;  /* size of `array' array */
 } Table;
+
 
 
 /*
@@ -540,7 +469,6 @@ LUAI_FUNC int luaO_log2 (unsigned int x);
 LUAI_FUNC int luaO_int2fb (unsigned int x);
 LUAI_FUNC int luaO_fb2int (int x);
 LUAI_FUNC int luaO_rawequalObj (const TValue *t1, const TValue *t2);
-LUAI_FUNC int luaO_str2d (const char *s, lua_Number *result);
 LUAI_FUNC const char *luaO_pushvfstring (lua_State *L, const char *fmt,
                                                        va_list argp);
 LUAI_FUNC const char *luaO_pushfstring (lua_State *L, const char *fmt, ...);

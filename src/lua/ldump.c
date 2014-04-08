@@ -99,6 +99,13 @@ static void DumpInt(int x, DumpState* D)
  DumpIntWithSize(x,D->target.sizeof_int,D);
 }
 
+#ifdef LUA_TINT
+static void DumpInteger(lua_Integer x, DumpState* D)
+{
+ DumpIntWithSize(x,D->target.sizeof_integer,D);
+}
+#endif
+
 static void DumpSize(uint32_t x, DumpState* D)
 {
  /* dump unsigned integer */
@@ -126,43 +133,31 @@ static void DumpSize(uint32_t x, DumpState* D)
 
 static void DumpNumber(lua_Number x, DumpState* D)
 {
-#if defined( LUA_NUMBER_INTEGRAL ) && !defined( LUA_CROSS_COMPILER )
-  DumpIntWithSize(x,D->target.sizeof_lua_Number,D);
-#else // #if defined( LUA_NUMBER_INTEGRAL ) && !defined( LUA_CROSS_COMPILER )
- if (D->target.lua_Number_integral)
+ switch(D->target.sizeof_lua_Number)
  {
-  if (((float)(int)x)!=x) D->status=LUA_ERR_CC_NOTINTEGER;
-  DumpIntWithSize(x,D->target.sizeof_lua_Number,D);
+  /* do we need bounds checking? */
+  case 4: {
+   float y=x;
+   MaybeByteSwap((char*)&y,4,D);
+   DumpVar(y,D);
+  } break;
+  case 8: {
+   double y=x;
+   // ARM FPA mode: keep endianness, but swap high and low parts of the 
+   // memory representation. This is the default compilation mode for ARM 
+   // targets with non-EABI gcc
+   if(D->target.is_arm_fpa)
+   {
+     char *pnum=(char*)&y, temp[4];
+     memcpy(temp,pnum,4);
+     memcpy(pnum,pnum+4,4);
+     memcpy(pnum+4,temp,4);
+   }    
+   MaybeByteSwap((char*)&y,8,D);
+   DumpVar(y,D);
+  } break;
+  default: lua_assert(0);
  }
- else
- {
-  switch(D->target.sizeof_lua_Number)
-  {
-   /* do we need bounds checking? */
-   case 4: {
-    float y=x;
-    MaybeByteSwap((char*)&y,4,D);
-    DumpVar(y,D);
-   } break;
-   case 8: {
-    double y=x;
-    // ARM FPA mode: keep endianness, but swap high and low parts of the 
-    // memory representation. This is the default compilation mode for ARM 
-    // targets with non-EABI gcc
-    if(D->target.is_arm_fpa)
-    {
-      char *pnum=(char*)&y, temp[4];
-      memcpy(temp,pnum,4);
-      memcpy(pnum,pnum+4,4);
-      memcpy(pnum+4,temp,4);
-    }    
-    MaybeByteSwap((char*)&y,8,D);
-    DumpVar(y,D);
-   } break;
-   default: lua_assert(0);
-  }
- }
-#endif // #if defined( LUA_NUMBER_INTEGRAL ) && !defined( LUA_CROSS_COMPILER )
 }
 
 static void DumpCode(const Proto *f, DumpState* D)
@@ -211,8 +206,13 @@ static void DumpConstants(const Proto* f, DumpState* D)
    case LUA_TBOOLEAN:
 	DumpChar(bvalue(o),D);
 	break;
+#ifdef LUA_TINT
+   case LUA_TINT:
+	DumpInteger(ivalue(o),D);
+    break;
+#endif
    case LUA_TNUMBER:
-	DumpNumber(nvalue(o),D);
+	DumpNumber(nvalue_fast(o),D);
 	break;
    case LUA_TSTRING:
 	DumpString(rawtsvalue(o),D);
@@ -246,7 +246,6 @@ static void DumpDebug(const Proto* f, DumpState* D)
   DumpInt(f->locvars[i].startpc,D);
   DumpInt(f->locvars[i].endpc,D);
  }
-
  n= (D->strip) ? 0 : f->sizeupvalues;
  DumpInt(n,D);
  for (i=0; i<n; i++) DumpString(f->upvalues[i],D);
@@ -281,7 +280,7 @@ static void DumpHeader(DumpState* D)
  *h++=(char)D->target.sizeof_strsize_t;
  *h++=(char)sizeof(Instruction);
  *h++=(char)D->target.sizeof_lua_Number;
- *h++=(char)D->target.lua_Number_integral;
+ *h++=(char)D->target.sizeof_integer;
  
  DumpBlock(buf,LUAC_HEADERSIZE,D);
 }
@@ -313,9 +312,9 @@ int luaU_dump (lua_State* L, const Proto* f, lua_Writer w, void* data, int strip
  int test=1;
  target.little_endian=*(char*)&test;
  target.sizeof_int=sizeof(int);
+ target.sizeof_integer=sizeof(lua_Integer);
  target.sizeof_strsize_t=sizeof(strsize_t);
  target.sizeof_lua_Number=sizeof(lua_Number);
- target.lua_Number_integral=(((lua_Number)0.5)==0);
  target.is_arm_fpa=0;
  return luaU_dump_crosscompile(L,f,w,data,strip,target);
 }

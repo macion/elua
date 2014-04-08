@@ -27,7 +27,6 @@ typedef struct {
  const char* name;
  int swap;
  int numsize;
- int toflt;
  size_t total;
 } LoadState;
 
@@ -100,7 +99,7 @@ static void LoadMem (LoadState* S, void* b, int n, size_t size)
 
 static int LoadChar(LoadState* S)
 {
- char x;
+ signed char x;
  LoadVar(S,x);
  return x;
 }
@@ -122,39 +121,18 @@ static int LoadInt(LoadState* S)
 static lua_Number LoadNumber(LoadState* S)
 {
  lua_Number x;
- if(S->toflt)
- {
-  switch(S->numsize)
-  {
-   case 1: {
-    int8_t y;
-    LoadVar(S,y);
-    x = (lua_Number)y;
-   } break;
-   case 2: {
-    int16_t y;
-    LoadVar(S,y);
-    x = (lua_Number)y;
-   } break;
-   case 4: {
-    int32_t y;
-    LoadVar(S,y);
-    x = (lua_Number)y;
-   } break;
-   case 8: {
-    int64_t y;
-    LoadVar(S,y);
-    x = (lua_Number)y;
-   } break;
-   default: lua_assert(0);
-  }
- }
- else
- {
-  LoadVar(S,x); /* should probably handle more cases for float here... */
- }
+ LoadVar(S,x);
  return x;
 }
+
+#ifdef LUA_TINT
+static lua_Integer LoadInteger(LoadState* S)
+{
+ lua_Integer x;
+ LoadVar(S,x);
+ return x;
+}
+#endif
 
 static TString* LoadString(LoadState* S)
 {
@@ -215,6 +193,11 @@ static void LoadConstants(LoadState* S, Proto* f)
    case LUA_TNUMBER:
 	setnvalue(o,LoadNumber(S));
 	break;
+#ifdef LUA_TINT
+   case LUA_TINT:   /* Integer type saved in bytecode (see lcode.c) */
+	setivalue(o,LoadInteger(S));
+	break;
+#endif
    case LUA_TSTRING:
 	setsvalue2n(S->L,o,LoadString(S));
 	break;
@@ -287,13 +270,14 @@ static void LoadHeader(LoadState* S)
 {
  char h[LUAC_HEADERSIZE];
  char s[LUAC_HEADERSIZE];
- int intck = (((lua_Number)0.5)==0); /* 0=float, 1=int */
  luaU_header(h);
  LoadBlock(S,s,LUAC_HEADERSIZE);
  S->swap=(s[6]!=h[6]); s[6]=h[6]; /* Check if byte-swapping is needed  */
  S->numsize=h[10]=s[10]; /* length of lua_Number */
- S->toflt=(s[11]>intck); /* check if conversion from int lua_Number to flt is needed */
- if(S->toflt) s[11]=h[11];
+ s[11] = h[11];
+ /*
+  * TODO correct checking header bytes
+  */
  IF (memcmp(h,s,LUAC_HEADERSIZE)!=0, "bad header");
 }
 
@@ -332,5 +316,19 @@ void luaU_header (char* h)
  *h++=(char)sizeof(int32_t);
  *h++=(char)sizeof(Instruction);
  *h++=(char)sizeof(lua_Number);
- *h++=(char)(((lua_Number)0.5)==0);		/* is lua_Number integral? */
+
+ /* 
+  * Last byte of header (0/1 in unpatched Lua 5.1.3):
+  *
+  * 0: lua_Number is float/double/ldouble (nonpatched only)
+  * 1: lua_Number is integer (nonpatched only)
+  * 4: LNUM_INT32: sizeof(lua_Integer)
+  * 8: LNUM_INT64: sizeof(lua_Integer)
+  * +0x80: LNUM_COMPLEX
+  */
+ *h++ = (char)( sizeof(lua_Integer)
+#ifdef LNUM_COMPLEX
+    | 0x80
+#endif
+    );
 }

@@ -7,6 +7,10 @@
 
 #include <stddef.h>
 
+#include <stdlib.h>
+#include <stdio.h>
+   /* for nan check */
+
 #define lstate_c
 #define LUA_CORE
 
@@ -22,6 +26,7 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "ltm.h"
+#include "lnum.h"
 // BogdanM: modified for Lua interrupt support
 #ifndef LUA_CROSS_COMPILER
 #include "platform_conf.h"

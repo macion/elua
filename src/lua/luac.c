@@ -110,8 +110,8 @@ static int doargs(int argc, char* argv[])
   else if (IS("-ccn")) /* target lua_Number type and size */
   {
    const char *type=argv[++i];
-   if (strcmp(type,"int")==0) target.lua_Number_integral=1;
-   else if (strcmp(type,"float")==0) target.lua_Number_integral=0;
+   if (strcmp(type,"int")==0) {};
+   else if (strcmp(type,"float")==0) {};
    else if (strcmp(type,"float_arm")==0)
    {
      target.lua_Number_integral=0;
@@ -119,8 +119,7 @@ static int doargs(int argc, char* argv[])
    }
    else fatal(LUA_QL("-ccn") " type must be " LUA_QL("int") " or " LUA_QL("float") " or " LUA_QL("float_arm"));
    int s = target.sizeof_lua_Number = atoi(argv[++i])/8;
-   if (target.lua_Number_integral && !(s==1 || s==2 || s==4)) fatal(LUA_QL("-ccn") " size must be 8, 16, or 32 for int");
-   if (!target.lua_Number_integral && !(s==4 || s==8)) fatal(LUA_QL("-ccn") " size must be 32 or 64 for float");
+   if (!(s==4 || s==8)) fatal(LUA_QL("-ccn") " size must be 32 or 64 for float");
   }
   else if (IS("-cce")) /* target endianness */
   {
@@ -224,9 +223,9 @@ int main(int argc, char* argv[])
  int test=1;
  target.little_endian=*(char*)&test;
  target.sizeof_int=sizeof(int);
+ target.sizeof_integer=sizeof(lua_Integer);
  target.sizeof_strsize_t=sizeof(strsize_t);
  target.sizeof_lua_Number=sizeof(lua_Number);
- target.lua_Number_integral=(((lua_Number)0.5)==0);
  target.is_arm_fpa=0;
 
  int i=doargs(argc,argv);

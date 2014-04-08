@@ -20,7 +20,7 @@ typedef struct {
  int sizeof_int;
  int sizeof_strsize_t;
  int sizeof_lua_Number;
- int lua_Number_integral;
+ int sizeof_integer;
  int is_arm_fpa;
 } DumpTargetInfo;
 
