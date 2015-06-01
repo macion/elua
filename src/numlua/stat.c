@@ -190,7 +190,7 @@ static int factor_fold (lua_State *L) {
   }
   else {
     for (i = 0; i < f->nlevels; i++) /* init result */
-      r->data[i] = creal(c);
+      r->data[i] = CREAL(c);
     for (i = 0; i < f->size; i++) {
       lua_pushvalue(L, 3); /* function */
       lua_pushnumber(L, r->data[f->map[i]]);
@@ -296,7 +296,7 @@ static void check_status (lua_State *L, int status, lua_Number bound) {
 
 /* bd0: computes bd0(x, np) = x log(x/np) + np - x */
 static lua_Number bd0 (lua_Number x, lua_Number np) {
-  if (fabs(x - np) < 0.1 * (x + np)) {
+  if (FABS(x - np) < 0.1 * (x + np)) {
     lua_Number ej, s, s1, v;
     int j;
     s = (x - np);
@@ -310,16 +310,16 @@ static lua_Number bd0 (lua_Number x, lua_Number np) {
       s = s1;
     }
   }
-  return x * log(x / np) + np - x;
+  return x * LOG(x / np) + np - x;
 }
 
-/* stirlerr(n) = log(n!) - log( sqrt(2*pi*n)*(n/e)^n ) */
+/* stirlerr(n) = LOG(n!) - LOG( SQRT(2*pi*n)*(n/e)^n ) */
 static lua_Number stirlerr (lua_Number n) {
   lua_Number nn;
   if (n < 15.0) {
     nn = 2.0 * n;
     if (nn == FORCE_INT(nn)) return sferr_halves[(int) nn];
-    return lgamma(n + 1.0) - (n + 0.5) * log(n) + n - HF_LG_PIx2;
+    return lgamma(n + 1.0) - (n + 0.5) * LOG(n) + n - HF_LG_PIx2;
   }
   nn = n * n;
   if (n > 500) return (S0 - S1 / nn) / n;
@@ -334,14 +334,14 @@ static lua_Number dbinom_raw (lua_Number x, lua_Number n, lua_Number p,
   if (p == 0) return (x == 0) ? 1 : 0;
   if (q == 0) return (x == n) ? 1 : 0;
   if (x == 0)
-    return exp((p < 0.1) ? -bd0(n, n * q) - n * p : n * log(q));
+    return EXP((p < 0.1) ? -bd0(n, n * q) - n * p : n * LOG(q));
   if (x == n)
-    return exp((q < 0.1) ? -bd0(n, n * p) - n * q : n * log(p));
+    return EXP((q < 0.1) ? -bd0(n, n * p) - n * q : n * LOG(p));
   if ((x < 0) || (x > n)) return 0;
   lc = stirlerr(n) - stirlerr(x) - stirlerr(n - x)
     - bd0(x, n * p) - bd0(n - x, n * q);
   f = (2 * M_PI * x * (n - x)) / n;
-  return exp(lc) / sqrt(f);
+  return EXP(lc) / SQRT(f);
 }
 
 static lua_Number dhyper_raw (lua_Number x, lua_Number r, lua_Number b,
@@ -391,20 +391,20 @@ static void check_beta (lua_State *L, int which, lua_Number x,
 static int stat_dbeta (lua_State *L) {
   /* stack should contain x, a and b */
   lua_Number x = luaL_checknumber(L, 1);
-  lua_Number a = luaL_checknumber(L, 2);
-  lua_Number b = luaL_checknumber(L, 3);
+  double a = luaL_checknumber(L, 2);
+  double b = luaL_checknumber(L, 3);
   check_beta(L, 1, x, a, b);
   lua_pushnumber(L, (x == 0 || x == 1) ? 0 :
-      exp((a - 1) * log(x) + (b - 1) * log(1 - x) - dlnbet(&a, &b)));
+      EXP((a - 1) * LOG(x) + (b - 1) * LOG(1 - x) - dlnbet(&a, &b)));
   return 1;
 }
 
 static int stat_pbeta (lua_State *L) {
   /* stack should contain x, a and b */
-  lua_Number x = luaL_checknumber(L, 1);
-  lua_Number a = luaL_checknumber(L, 2);
-  lua_Number b = luaL_checknumber(L, 3);
-  lua_Number p, q, y, bound;
+  double x = luaL_checknumber(L, 1);
+  double a = luaL_checknumber(L, 2);
+  double b = luaL_checknumber(L, 3);
+  double p, q, y, bound;
   int which = 1;
   int status;
   check_beta(L, 1, x, a, b);
@@ -417,14 +417,14 @@ static int stat_pbeta (lua_State *L) {
 
 static int stat_qbeta (lua_State *L) {
   /* stack should contain x, a and b */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number a = luaL_checknumber(L, 2);
-  lua_Number b = luaL_checknumber(L, 3);
-  lua_Number x;
+  double p = luaL_checknumber(L, 1);
+  double a = luaL_checknumber(L, 2);
+  double b = luaL_checknumber(L, 3);
+  double x;
   check_beta(L, 2, p, a, b);
   if (p == 0 || p == 1) x = p;
   else {
-    lua_Number q, y, bound;
+    double q, y, bound;
     int which = 2;
     int status;
     q = 1 - p;
@@ -461,10 +461,10 @@ static int stat_dbinom (lua_State *L) {
 
 static int stat_pbinom (lua_State *L) {
   /* stack should contain s, xn, pr */
-  lua_Number s = luaL_checknumber(L, 1);
-  lua_Number xn = luaL_checknumber(L, 2);
-  lua_Number pr = luaL_checknumber(L, 3);
-  lua_Number p, q, ompr, bound;
+  double s = luaL_checknumber(L, 1);
+  double xn = luaL_checknumber(L, 2);
+  double pr = luaL_checknumber(L, 3);
+  double p, q, ompr, bound;
   int which = 1;
   int status;
   check_binom(L, 1, s, xn, pr);
@@ -477,17 +477,17 @@ static int stat_pbinom (lua_State *L) {
 
 static int stat_qbinom (lua_State *L) {
   /* stack should contain p, xn, pr */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number xn = luaL_checknumber(L, 2);
-  lua_Number pr = luaL_checknumber(L, 3);
-  lua_Number s;
+  double p = luaL_checknumber(L, 1);
+  double xn = luaL_checknumber(L, 2);
+  double pr = luaL_checknumber(L, 3);
+  double s;
   int si;
   check_binom(L, 2, p, xn, pr);
   if (p == 0 || p == 1) s = p*xn;
   else {
-    lua_Number q = 1 - p;
-    lua_Number ompr = 1 - pr;
-    lua_Number bound;
+    double q = 1 - p;
+    double ompr = 1 - pr;
+    double bound;
     int which = 2;
     int status;
     cdfbin(&which, &p, &q, &s, &xn, &pr, &ompr, &status, &bound);
@@ -517,16 +517,16 @@ static int stat_dchisq (lua_State *L) {
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number df = luaL_checknumber(L, 2);
   lua_Number pnonc = luaL_optnumber(L, 3, 0);
-  lua_Number d;
+  double d;
   check_chisq(L, 1, x, df, pnonc);
   /* compute central dchisq */
   d = df / 2;
-  d = exp((d - 1) * log(x) - x / 2 - d * M_LN2 - dlngam(&d));
+  d = EXP((d - 1) * LOG(x) - x / 2 - d * M_LN2 - dlngam(&d));
   /* compute non-central if that's the case */
   if (pnonc != 0) { /* non-central? */
     /* evaluate weighted series */
     int i;
-    lua_Number t = d *= exp(-pnonc / 2); /* first term */
+    lua_Number t = d *= EXP(-pnonc / 2); /* first term */
     for (i = 1; i < MAXITER && d > LBOUND && t > DBL_EPSILON * d; i++)
       d += t *= x * pnonc / (2 * i * (df + 2 * (i - 1)));
   }
@@ -536,10 +536,10 @@ static int stat_dchisq (lua_State *L) {
 
 static int stat_pchisq (lua_State *L) {
   /* stack should contain x, df and opt. pnonc */
-  lua_Number x = luaL_checknumber(L, 1);
-  lua_Number df = luaL_checknumber(L, 2);
-  lua_Number pnonc = luaL_optnumber(L, 3, 0);
-  lua_Number p, q, bound;
+  double x = luaL_checknumber(L, 1);
+  double df = luaL_checknumber(L, 2);
+  double pnonc = luaL_optnumber(L, 3, 0);
+  double p, q, bound;
   int which = 1;
   int status;
   check_chisq(L, 1, x, df, pnonc);
@@ -554,15 +554,15 @@ static int stat_pchisq (lua_State *L) {
 
 static int stat_qchisq (lua_State *L) {
   /* stack should contain p, df and opt. pnonc */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number df = luaL_checknumber(L, 2);
-  lua_Number pnonc = luaL_optnumber(L, 3, 0);
-  lua_Number x;
+  double p = luaL_checknumber(L, 1);
+  double df = luaL_checknumber(L, 2);
+  double pnonc = luaL_optnumber(L, 3, 0);
+  double x;
   check_chisq(L, 2, p, df, pnonc);
   if (p == 0 || p == 1) x = (p == 0) ? 0 : HUGE_VAL;
   else {
-    lua_Number q = 1 - p;
-    lua_Number bound;
+    double q = 1 - p;
+    double bound;
     int which = 2;
     int status;
     if (pnonc == 0) /* central? */
@@ -582,7 +582,7 @@ static int stat_dexp (lua_State *L) {
   /* stack should contain x and rate */
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number l = luaL_optnumber(L, 2, 1);
-  lua_pushnumber(L, exp(-l * x) * l);
+  lua_pushnumber(L, EXP(-l * x) * l);
   return 1;
 }
 
@@ -590,7 +590,7 @@ static int stat_pexp (lua_State *L) {
   /* stack should contain x and rate */
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number l = luaL_optnumber(L, 2, 1);
-  lua_pushnumber(L, 1 - exp(-l * x));
+  lua_pushnumber(L, 1 - EXP(-l * x));
   return 1;
 }
 
@@ -599,7 +599,7 @@ static int stat_qexp (lua_State *L) {
   lua_Number p = luaL_checknumber(L, 1);
   lua_Number l = luaL_optnumber(L, 2, 1);
   luaL_argcheck(L, p >= 0 && p <= 1, 1, "out of range");
-  lua_pushnumber(L, (p < 1) ? -log(1 - p) / l : HUGE_VAL);
+  lua_pushnumber(L, (p < 1) ? -LOG(1 - p) / l : HUGE_VAL);
   return 1;
 }
 
@@ -620,25 +620,25 @@ static int stat_df (lua_State *L) {
   lua_Number f = luaL_checknumber(L, 1);
   lua_Number dfn = luaL_checknumber(L, 2);
   lua_Number dfd = luaL_checknumber(L, 3);
-  lua_Number df1, df2, r, d;
+  double df1, df2, r, d;
   check_f(L, 1, f, dfn, dfd);
   df1 = dfn / 2;
   df2 = dfd / 2;
   r = dfn / dfd;
-  d = df1 * log(r) + (df1 - 1) * log(f);
-  d -= (df1 + df2) * log(1 + r * f);
+  d = df1 * LOG(r) + (df1 - 1) * LOG(f);
+  d -= (df1 + df2) * LOG(1 + r * f);
   d -= dlnbet(&df1, &df2);
-  lua_pushnumber(L, exp(d));
+  lua_pushnumber(L, EXP(d));
   return 1;
 }
 
 static int stat_pf (lua_State *L) {
   /* stack should contain f, dfn, dfd and opt. phonc */
-  lua_Number f = luaL_checknumber(L, 1);
-  lua_Number dfn = luaL_checknumber(L, 2);
-  lua_Number dfd = luaL_checknumber(L, 3);
-  lua_Number phonc = luaL_optnumber(L, 4, 0);
-  lua_Number p, q, bound;
+  double f = luaL_checknumber(L, 1);
+  double dfn = luaL_checknumber(L, 2);
+  double dfd = luaL_checknumber(L, 3);
+  double phonc = luaL_optnumber(L, 4, 0);
+  double p, q, bound;
   int which = 1;
   int status;
   check_f(L, 1, f, dfn, dfd);
@@ -653,16 +653,16 @@ static int stat_pf (lua_State *L) {
 
 static int stat_qf (lua_State *L) {
   /* stack should contain p, dfn, dfd and opt. phonc */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number dfn = luaL_checknumber(L, 2);
-  lua_Number dfd = luaL_checknumber(L, 3);
-  lua_Number phonc = luaL_optnumber(L, 4, 0);
-  lua_Number f;
+  double p = luaL_checknumber(L, 1);
+  double dfn = luaL_checknumber(L, 2);
+  double dfd = luaL_checknumber(L, 3);
+  double phonc = luaL_optnumber(L, 4, 0);
+  double f;
   check_f(L, 2, p, dfn, dfd);
   if (p == 0 || p == 1) f = (p == 0) ? 0 : HUGE_VAL;
   else {
-    lua_Number q = 1 - p;
-    lua_Number bound;
+    double q = 1 - p;
+    double bound;
     int which = 2;
     int status;
     if (phonc == 0) /* central? */
@@ -691,22 +691,22 @@ static void check_gamma (lua_State *L, int which, lua_Number x,
 static int stat_dgamma (lua_State *L) {
   /* stack should contain x, shape and opt. scale */
   lua_Number x = luaL_checknumber(L, 1);
-  lua_Number shape = luaL_checknumber(L, 2);
+  double shape = luaL_checknumber(L, 2);
   lua_Number scale = luaL_optnumber(L, 3, 1);
   lua_Number d;
   check_gamma(L, 1, x, shape, scale);
   d = x * scale;
-  d = exp(shape * log(d) - d - dlngam(&shape)) / x;
+  d = EXP(shape * LOG(d) - d - (lua_Number)dlngam(&shape)) / x;
   lua_pushnumber(L, d);
   return 1;
 }
 
 static int stat_pgamma (lua_State *L) {
   /* stack should contain x, shape and opt. scale */
-  lua_Number x = luaL_checknumber(L, 1);
-  lua_Number shape = luaL_checknumber(L, 2);
-  lua_Number scale = luaL_optnumber(L, 3, 1);
-  lua_Number p, q, bound;
+  double x = luaL_checknumber(L, 1);
+  double shape = luaL_checknumber(L, 2);
+  double scale = luaL_optnumber(L, 3, 1);
+  double p, q, bound;
   int which = 1;
   int status;
   check_gamma(L, 1, x, shape, scale);
@@ -718,15 +718,15 @@ static int stat_pgamma (lua_State *L) {
 
 static int stat_qgamma (lua_State *L) {
   /* stack should contain p, shape and opt. scale */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number shape = luaL_checknumber(L, 2);
-  lua_Number scale = luaL_optnumber(L, 3, 1);
-  lua_Number x;
+  double p = luaL_checknumber(L, 1);
+  double shape = luaL_checknumber(L, 2);
+  double scale = luaL_optnumber(L, 3, 1);
+  double x;
   check_gamma(L, 2, p, shape, scale);
   if (p == 0 || p == 1) x = (p == 0) ? 0 : HUGE_VAL;
   else {
-    lua_Number q = 1 - p;
-    lua_Number bound;
+    double q = 1 - p;
+    double bound;
     int which = 2;
     int status;
     cdfgam(&which, &p, &q, &x, &shape, &scale, &status, &bound);
@@ -799,22 +799,22 @@ static void check_nbinom (lua_State *L, int which, lua_Number x,
 
 static int stat_dnbinom (lua_State *L) {
   /* stack should contain s, xn, pr */
-  lua_Number s = luaL_checknumber(L, 1);
-  lua_Number xn = luaL_checknumber(L, 2);
+  double s = luaL_checknumber(L, 1);
+  double xn = luaL_checknumber(L, 2);
   lua_Number pr = luaL_checknumber(L, 3);
   lua_Number d;
   check_nbinom(L, 1, s, xn, pr);
-  d = exp(xn * log(pr) + s * log(1 - pr) - dlnbet(&s, &xn)) / s;
+  d = EXP(xn * LOG(pr) + s * LOG(1 - pr) - (lua_Number)dlnbet(&s, &xn)) / s;
   lua_pushnumber(L, d);
   return 1;
 }
 
 static int stat_pnbinom (lua_State *L) {
   /* stack should contain s, xn, pr */
-  lua_Number s = luaL_checknumber(L, 1);
-  lua_Number xn = luaL_checknumber(L, 2);
-  lua_Number pr = luaL_checknumber(L, 3);
-  lua_Number p, q, ompr, bound;
+  double s = luaL_checknumber(L, 1);
+  double xn = luaL_checknumber(L, 2);
+  double pr = luaL_checknumber(L, 3);
+  double p, q, ompr, bound;
   int which = 1;
   int status;
   check_nbinom(L, 1, s, xn, pr);
@@ -827,9 +827,9 @@ static int stat_pnbinom (lua_State *L) {
 
 static int stat_qnbinom (lua_State *L) {
   /* stack should contain p, xn, pr */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number xn = luaL_checknumber(L, 2);
-  lua_Number pr = luaL_checknumber(L, 3);
+  double p = luaL_checknumber(L, 1);
+  double xn = luaL_checknumber(L, 2);
+  double pr = luaL_checknumber(L, 3);
   int si = 0;
   check_nbinom(L, 2, p, xn, pr);
   if (p == 1) {
@@ -837,9 +837,9 @@ static int stat_qnbinom (lua_State *L) {
     return 1;
   }
   if (p > 0) {
-    lua_Number q = 1 - p;
-    lua_Number ompr = 1 - pr;
-    lua_Number s, bound;
+    double q = 1 - p;
+    double ompr = 1 - pr;
+    double s, bound;
     int which = 2;
     int status;
     cdfnbn(&which, &p, &q, &s, &xn, &pr, &ompr, &status, &bound);
@@ -868,17 +868,17 @@ static int stat_dnorm (lua_State *L) {
   lua_Number d;
   check_norm(L, 1, x, sd);
   d = (x - mean) / sd;
-  d = exp(-d*d / 2) / (SQRT2PI * sd);
+  d = EXP(-d*d / 2) / (SQRT2PI * sd);
   lua_pushnumber(L, d);
   return 1;
 }
 
 static int stat_pnorm (lua_State *L) {
   /* stack should contain x, and opt. mean and sd */
-  lua_Number x = luaL_checknumber(L, 1);
-  lua_Number mean = luaL_optnumber(L, 2, 0);
-  lua_Number sd = luaL_optnumber(L, 3, 1);
-  lua_Number p, q, bound;
+  double x = luaL_checknumber(L, 1);
+  double mean = luaL_optnumber(L, 2, 0);
+  double sd = luaL_optnumber(L, 3, 1);
+  double p, q, bound;
   int which = 1;
   int status;
   check_norm(L, 1, x, sd);
@@ -891,15 +891,15 @@ static int stat_pnorm (lua_State *L) {
 
 static int stat_qnorm (lua_State *L) {
   /* stack should contain p, and opt. mean and sd */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number mean = luaL_optnumber(L, 2, 0);
-  lua_Number sd = luaL_optnumber(L, 3, 1);
-  lua_Number x;
+  double p = luaL_checknumber(L, 1);
+  double mean = luaL_optnumber(L, 2, 0);
+  double sd = luaL_optnumber(L, 3, 1);
+  double x;
   check_norm(L, 2, p, sd);
   if (p == 0 || p == 1) x = (p == 0) ? -HUGE_VAL : HUGE_VAL;
   else {
-    lua_Number q = 1 - p;
-    lua_Number bound;
+    double q = 1 - p;
+    double bound;
     int which = 2;
     int status;
     cdfnor(&which, &p, &q, &x, &mean, &sd, &status, &bound);
@@ -924,19 +924,19 @@ static int stat_dpois (lua_State *L) {
   /* stack should contain s and xlam */
   lua_Number s = luaL_checknumber(L, 1);
   lua_Number xlam = luaL_checknumber(L, 2);
-  lua_Number d;
+  double d;
   check_pois(L, 1, s, xlam);
   d = s + 1;
-  d = exp(s * log(xlam) - xlam - dlngam(&d));
+  d = EXP(s * LOG(xlam) - xlam - (lua_Number)dlngam(&d));
   lua_pushnumber(L, d);
   return 1;
 }
 
 static int stat_ppois (lua_State *L) {
   /* stack should contain s and xlam */
-  lua_Number s = luaL_checknumber(L, 1);
-  lua_Number xlam = luaL_checknumber(L, 2);
-  lua_Number p, q, bound;
+  double s = luaL_checknumber(L, 1);
+  double xlam = luaL_checknumber(L, 2);
+  double p, q, bound;
   int which = 1;
   int status;
   check_pois(L, 1, s, xlam);
@@ -949,8 +949,8 @@ static int stat_ppois (lua_State *L) {
 
 static int stat_qpois (lua_State *L) {
   /* stack should contain p and xlam */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number xlam = luaL_checknumber(L, 2);
+  double p = luaL_checknumber(L, 1);
+  double xlam = luaL_checknumber(L, 2);
   int si = 0;
   check_pois(L, 2, p, xlam);
   if (p == 1) {
@@ -958,8 +958,8 @@ static int stat_qpois (lua_State *L) {
     return 1;
   }
   if (p > 0) {
-    lua_Number q = 1 - p;
-    lua_Number s, bound;
+    double q = 1 - p;
+    double s, bound;
     int which = 2;
     int status;
     cdfpoi(&which, &p, &q, &s, &xlam, &status, &bound);
@@ -984,21 +984,21 @@ static int stat_dt (lua_State *L) {
   /* stack should contain x and df */
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number df = luaL_checknumber(L, 2);
-  lua_Number t = 0.5;
-  lua_Number d;
+  double t = 0.5;
+  double d;
   check_t(L, 1, x, df);
   d = df / 2;
-  d = -dlnbet(&d, &t) - (df + 1) / 2 * log(1 + x * x / df);
-  d = exp(d) / sqrt(df);
+  d = -dlnbet(&d, &t) - (df + 1) / 2 * LOG(1 + x * x / df);
+  d = EXP(d) / SQRT(df);
   lua_pushnumber(L, d);
   return 1;
 }
 
 static int stat_pt (lua_State *L) {
   /* stack should contain t and df */
-  lua_Number t = luaL_checknumber(L, 1);
-  lua_Number df = luaL_checknumber(L, 2);
-  lua_Number p, q, bound;
+  double t = luaL_checknumber(L, 1);
+  double df = luaL_checknumber(L, 2);
+  double p, q, bound;
   int which = 1;
   int status;
   check_t(L, 1, t, df);
@@ -1011,14 +1011,14 @@ static int stat_pt (lua_State *L) {
 
 static int stat_qt (lua_State *L) {
   /* stack should contain p and df */
-  lua_Number p = luaL_checknumber(L, 1);
-  lua_Number df = luaL_checknumber(L, 2);
-  lua_Number t;
+  double p = luaL_checknumber(L, 1);
+  double df = luaL_checknumber(L, 2);
+  double t;
   check_t(L, 2, p, df);
   if (p == 0 || p == 1) t = (p == 0) ? -HUGE_VAL : HUGE_VAL;
   else {
-    lua_Number q = 1 - p;
-    lua_Number bound;
+    double q = 1 - p;
+    double bound;
     int which = 2;
     int status;
     cdft(&which, &p, &q, &t, &df, &status, &bound);

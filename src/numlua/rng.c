@@ -380,7 +380,7 @@ static int lsample_rng (lua_State *L) {
   /* sample */
   c = 0; u = ranf(r); e = w->data;
   for (i = 0; i < w->size && u >= c; i++) {
-    if (!isinf(*e)) c += exp(*e - z);
+    if (!isinf(*e)) c += EXP(*e - z);
     e += w->stride;
   }
   lua_pushinteger(L, i);

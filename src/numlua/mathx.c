@@ -110,8 +110,8 @@ static int mathx_airya (lua_State *L) {
   nl_Complex z = nl_checkcomplex(L, 1);
   int id = lua_toboolean(L, 2);
   int kode = lua_toboolean(L, 3) + 1;
-  lua_Number zr = creal(z), zi = cimag(z);
-  lua_Number air, aii;
+  double zr = CREAL(z), zi = CIMAG(z);
+  double air, aii;
   int nz, ierr;
   zairy_(&zr, &zi, &id, &kode, &air, &aii, &nz, &ierr);
   if (nz == 0 && (ierr == 0 || ierr == 3)) { /* push result? */
@@ -140,8 +140,8 @@ static int mathx_airyb (lua_State *L) {
   nl_Complex z = nl_checkcomplex(L, 1);
   int id = lua_toboolean(L, 2);
   int kode = lua_toboolean(L, 3) + 1;
-  lua_Number zr = creal(z), zi = cimag(z);
-  lua_Number bir, bii;
+  double zr = CREAL(z), zi = CIMAG(z);
+  double bir, bii;
   int ierr;
   zbiry_(&zr, &zi, &id, &kode, &bir, &bii, &ierr);
   if (ierr == 0 || ierr == 3) { /* push result? */
@@ -165,16 +165,17 @@ static int mathx_airyb (lua_State *L) {
 }
 
 
+#ifndef LNUM_FLOAT /* Float not supported */
 static int mathx_besselh (lua_State *L) {
   lua_Number nu = luaL_checknumber(L, 1);
   nl_Complex z = nl_checkcomplex(L, 2);
   int m = lua_toboolean(L, 3) + 1;
   int kode = lua_toboolean(L, 4) + 1;
   int n = luaL_optinteger(L, 5, 1);
-  lua_Number zr = creal(z), zi = cimag(z);
+  lua_Number zr = CREAL(z), zi = CIMAG(z);
   int nz, ierr;
   luaL_argcheck(L, nu >= 0, 1, "initial order must be non-negative");
-  luaL_argcheck(L, cabs(z) > 0, 2, "argument must be different than zero");
+  luaL_argcheck(L, CABS(z) > 0, 2, "argument must be different than zero");
   luaL_argcheck(L, n > 0, 5, "number of members must be positive");
   if (n == 1) { /* output single member? */
     lua_Number cyr, cyi;
@@ -222,7 +223,7 @@ static int mathx_besseli (lua_State *L) {
   nl_Complex z = nl_checkcomplex(L, 2);
   int kode = lua_toboolean(L, 3) + 1;
   int n = luaL_optinteger(L, 4, 1);
-  lua_Number zr = creal(z), zi = cimag(z);
+  lua_Number zr = CREAL(z), zi = CIMAG(z);
   int nz, ierr;
   luaL_argcheck(L, nu >= 0, 1, "initial order must be non-negative");
   luaL_argcheck(L, n > 0, 4, "number of members must be positive");
@@ -272,7 +273,7 @@ static int mathx_besselj (lua_State *L) {
   nl_Complex z = nl_checkcomplex(L, 2);
   int kode = lua_toboolean(L, 3) + 1;
   int n = luaL_optinteger(L, 4, 1);
-  lua_Number zr = creal(z), zi = cimag(z);
+  lua_Number zr = CREAL(z), zi = CIMAG(z);
   int nz, ierr;
   luaL_argcheck(L, nu >= 0, 1, "initial order must be non-negative");
   luaL_argcheck(L, n > 0, 4, "number of members must be positive");
@@ -322,10 +323,10 @@ static int mathx_besselk (lua_State *L) {
   nl_Complex z = nl_checkcomplex(L, 2);
   int kode = lua_toboolean(L, 3) + 1;
   int n = luaL_optinteger(L, 4, 1);
-  lua_Number zr = creal(z), zi = cimag(z);
+  lua_Number zr = CREAL(z), zi = CIMAG(z);
   int nz, ierr;
   luaL_argcheck(L, nu >= 0, 1, "initial order must be non-negative");
-  luaL_argcheck(L, cabs(z) > 0, 2, "argument cannot be zero");
+  luaL_argcheck(L, CABS(z) > 0, 2, "argument cannot be zero");
   luaL_argcheck(L, n > 0, 4, "number of members must be positive");
   if (n == 1) { /* output single member? */
     lua_Number cyr, cyi;
@@ -373,7 +374,7 @@ static int mathx_bessely (lua_State *L) {
   nl_Complex z = nl_checkcomplex(L, 2);
   int kode = lua_toboolean(L, 3) + 1;
   int n = luaL_optinteger(L, 4, 1);
-  lua_Number zr = creal(z), zi = cimag(z);
+  lua_Number zr = CREAL(z), zi = CIMAG(z);
   int nz, ierr;
   luaL_argcheck(L, nu >= 0, 1, "initial order must be non-negative");
   luaL_argcheck(L, n > 0, 4, "number of members must be positive");
@@ -420,6 +421,7 @@ static int mathx_bessely (lua_State *L) {
   }
   return 2;
 }
+#endif /* Float not supported */
 
 
 /* [[ extra ]] */
@@ -429,8 +431,8 @@ static int mathx_feq (lua_State *L) {
   lua_Number x2 = luaL_checknumber(L, 2);
   lua_Number epsilon = luaL_optnumber(L, 3, DBL_EPSILON);
   int exp; /* frexp(max(|x1|,|x2|)) */
-  frexp(fabs(x1) > fabs(x2) ? x1 : x2, &exp);
-  lua_pushboolean(L, fabs(x1 - x2) <= ldexp(epsilon, exp));
+  FREXP(FABS(x1) > FABS(x2) ? x1 : x2, &exp);
+  lua_pushboolean(L, FABS(x1 - x2) <= LDEXP(epsilon, exp));
   return 1;
 }
 
@@ -441,7 +443,7 @@ static int mathx_feq (lua_State *L) {
 static int mathx_log1pe (lua_State *L) {
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number d = (x > 0) ? -x : x;
-  d = (d < LOGEPS) ? 0 : log1p(exp(d)); /* avoid calls if possible */
+  d = (d < LOGEPS) ? 0 : LOG1P(EXP(d)); /* avoid calls if possible */
   if (x > 0) d += x;
   lua_pushnumber(L, d);
   return 1;
@@ -458,7 +460,7 @@ NUMLUA_API lua_Number nl_lse (lua_Number w1, lua_Number w2) {
     d = w1 - w2; w = w2;
   }
   if (d < LOGEPS) return w;
-  return w + log1p(exp(d));
+  return w + LOG1P(EXP(d));
 }
 
 static int mathx_lse (lua_State *L) {
@@ -474,30 +476,30 @@ static int mathx_lse (lua_State *L) {
  * ======================================================================} */
 
 static int mathx_lbeta (lua_State *L) {
-  lua_Number a = luaL_checknumber(L, 1);
-  lua_Number b = luaL_checknumber(L, 2);
+  double a = luaL_checknumber(L, 1);
+  double b = luaL_checknumber(L, 2);
   lua_pushnumber(L, dlnbet(&a, &b));
   return 1;
 }
 
 static int mathx_beta (lua_State *L) {
-  lua_Number a = luaL_checknumber(L, 1);
-  lua_Number b = luaL_checknumber(L, 2);
-  lua_pushnumber(L, exp(dlnbet(&a, &b)));
+  double a = luaL_checknumber(L, 1);
+  double b = luaL_checknumber(L, 2);
+  lua_pushnumber(L, EXP(dlnbet(&a, &b)));
   return 1;
 }
 
 
 static int mathx_digamma (lua_State *L) {
-  lua_Number x = luaL_checknumber(L, 1);
+  double x = luaL_checknumber(L, 1);
   lua_pushnumber(L, psi(&x));
   return 1;
 }
 
 static lua_Number fchoose (lua_Number n, lua_Number k) {
-  lua_Number a = n - k + 1;
-  lua_Number b = k + 1;
-  return -dlnbet(&a, &b) - log(n + 1);
+  double a = n - k + 1;
+  double b = k + 1;
+  return -dlnbet(&a, &b) - LOG(n + 1);
 }
 
 static int mathx_lchoose (lua_State *L) {
@@ -522,10 +524,10 @@ static int mathx_choose (lua_State *L) {
   if (k < 0) c = 0;
   else if (k == 0) c = 1;
   /* k > 0 */
-  else if (n < 0) c = exp(fchoose(k - n - 1, k));
+  else if (n < 0) c = EXP(fchoose(k - n - 1, k));
   else if (n < k) c = 0;
   /* k <= n */
-  else c = exp(fchoose(n, k));
+  else c = EXP(fchoose(n, k));
   lua_pushnumber(L, c);
   return 1;
 }
@@ -568,11 +570,13 @@ static const luaL_Reg mathx_lib[] = {
   {"scalbn", mathx_scalbn},
   {"airya", mathx_airya},
   {"airyb", mathx_airyb},
+#if 0 /* Float not supported */
   {"besselh", mathx_besselh},
   {"besseli", mathx_besseli},
   {"besselj", mathx_besselj},
   {"besselk", mathx_besselk},
   {"bessely", mathx_bessely},
+#endif
   {"feq", mathx_feq},
   {"log1pe", mathx_log1pe},
   {"lse", mathx_lse},

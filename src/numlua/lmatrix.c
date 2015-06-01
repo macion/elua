@@ -177,7 +177,7 @@ static void setdatatoscalar (int iscomplex, int size, nl_Complex s,
   }
   else {
     lua_Number *e = data + shift;
-    lua_Number rs = creal(s);
+    lua_Number rs = CREAL(s);
     for (i = 0; i < size; i++, e += stride)
       *e = rs;
   }
@@ -242,7 +242,7 @@ static void settriangtoscalar (nl_Complex vc, char what, nl_Matrix *m) {
     }
   }
   else {
-    lua_Number rvc = creal(vc);
+    lua_Number rvc = CREAL(vc);
     if (what == 'l' || what == 'L') { /* lower? */
       for (i = 0; i < n; i++) {
         s = i * (ldm + 1) + 1;
@@ -330,7 +330,7 @@ static void settoarg (lua_State *L, nl_Matrix *m, int n, int stride, int size,
       }
       else {
         lua_Number *e = m->data + shift;
-        lua_Number rvc = creal(vc);
+        lua_Number rvc = CREAL(vc);
         for (i = 0; i < size; i++)
           e[nl_msshift(s, i)] = rvc;
       }
@@ -616,26 +616,26 @@ static void nl_mmul (nl_Matrix *c, nl_Matrix *a, nl_Matrix *b,
 #define SPPOW(x,p) \
   do { \
     if ((x) != 0) { \
-      a = fabs(x); \
+      a = FABS(x); \
       if (scale < a) { \
-        s = 1 + s * pow(scale / a, (p)); \
+        s = 1 + s * POW(scale / a, (p)); \
         scale = a; \
       } \
       else \
-        s += pow(a / scale, (p)); \
+        s += POW(a / scale, (p)); \
     } \
   } while (0)
 
 #define SNPOW(x,p) \
   do { \
     if ((x) != 0) { \
-      a = fabs(x); \
+      a = FABS(x); \
       if (scale > a) { \
-        s = 1 + s * pow(scale / a, (p)); \
+        s = 1 + s * POW(scale / a, (p)); \
         scale = a; \
       } \
       else \
-        s += pow(a / scale, (p)); \
+        s += POW(a / scale, (p)); \
     } \
   } while (0)
 
@@ -650,7 +650,7 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
       if (m->iscomplex) {
         nl_Complex *e = CPX(m->data);
         for (i = 0; i < m->size; i++, e = CSHIFT(m, i))
-          if (cabs(*e) != 0) n++;
+          if (CABS(*e) != 0) n++;
       }
       else {
         lua_Number *e = m->data;
@@ -662,7 +662,7 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
       if (m->iscomplex) {
         nl_Complex *e = CPX(m->data);
         for (i = 0; i < m->size; i++, e += m->stride)
-          if (cabs(*e) != 0) n++;
+          if (CABS(*e) != 0) n++;
       }
       else {
         lua_Number *e = m->data;
@@ -678,7 +678,7 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
         if (m->iscomplex) {
           nl_Complex *e = CPX(m->data);
           for (i = 0; i < m->size; i++, e = CSHIFT(m, i)) {
-            a = cabs(*e);
+            a = CABS(*e);
             if (norm < a) {
               *argm = i + 1;
               norm = a;
@@ -688,7 +688,7 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
         else {
           lua_Number *e = m->data;
           for (i = 0; i < m->size; i++, e = DSHIFT(m, i)) {
-            a = fabs(*e);
+            a = FABS(*e);
             if (norm < a) {
               *argm = i + 1;
               norm = a;
@@ -700,12 +700,12 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
         if (m->iscomplex) {
           i = IZAMAX(&m->size, CPX(m->data), &m->stride) - 1;
           *argm = i + 1;
-          norm = cabs(CPX(m->data)[i * m->stride]);
+          norm = CABS(CPX(m->data)[i * m->stride]);
         }
         else {
           i = IDAMAX(&m->size, m->data, &m->stride) - 1;
           *argm = i + 1;
-          norm = fabs(m->data[i * m->stride]);
+          norm = FABS(m->data[i * m->stride]);
         }
       }
       break;
@@ -744,12 +744,12 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
         if (m->iscomplex) {
           i = IZAMAX(&m->size, CPX(m->data), &m->stride) - 1;
           *argm = i + 1;
-          norm = cabs(CPX(m->data)[i * m->stride]);
+          norm = CABS(CPX(m->data)[i * m->stride]);
         }
         else {
           i = IDAMAX(&m->size, m->data, &m->stride) - 1;
           *argm = i + 1;
-          norm = fabs(m->data[i * m->stride]);
+          norm = FABS(m->data[i * m->stride]);
         }
       }
       else {
@@ -787,14 +787,14 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
           nl_Complex *e = CPX(m->data);
           if (p > 0) {
             for (i = 0; i < m->size; i++, e = CSHIFT(m, i)) {
-              SPPOW(creal(*e), p);
-              SPPOW(cimag(*e), p);
+              SPPOW(CREAL(*e), p);
+              SPPOW(CIMAG(*e), p);
             }
           }
           else {
             for (i = 0; i < m->size; i++, e = CSHIFT(m, i)) {
-              SNPOW(creal(*e), p);
-              SNPOW(cimag(*e), p);
+              SNPOW(CREAL(*e), p);
+              SNPOW(CIMAG(*e), p);
             }
           }
         }
@@ -809,7 +809,7 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
               SNPOW(*e, p);
           }
         }
-        norm = scale * pow(s, 1 / p);
+        norm = scale * POW(s, 1 / p);
       }
       else {
         if (p == 2) {
@@ -823,14 +823,14 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
             nl_Complex *e = CPX(m->data);
             if (p > 0) {
               for (i = 0; i < m->size; i++, e += m->stride) {
-                SPPOW(creal(*e), p);
-                SPPOW(cimag(*e), p);
+                SPPOW(CREAL(*e), p);
+                SPPOW(CIMAG(*e), p);
               }
             }
             else {
               for (i = 0; i < m->size; i++, e += m->stride) {
-                SNPOW(creal(*e), p);
-                SNPOW(cimag(*e), p);
+                SNPOW(CREAL(*e), p);
+                SNPOW(CIMAG(*e), p);
               }
             }
           }
@@ -845,7 +845,7 @@ static lua_Number nl_norm (nl_Matrix *m, char what, lua_Number p, int *argm) {
                 SNPOW(*e, p);
             }
           }
-          norm = scale * pow(s, 1 / p);
+          norm = scale * POW(s, 1 / p);
         }
       }
     }
@@ -896,9 +896,9 @@ static lua_Number nl_rcond (lua_State *L, nl_Matrix *m, char what,
     if (m->iscomplex) {
       nl_Complex *e = CPX(m->data);
       index = (IZAMAX(&n, CPX(m->data), &stride) - 1) * stride;
-      rcond = norm = cabs(CPX(m->data)[index]);
+      rcond = norm = CABS(CPX(m->data)[index]);
       for (i = 0; i < n; i++, e += stride) {
-        lua_Number a = cabs(*e);
+        lua_Number a = CABS(*e);
         if (rcond > a) rcond = a;
         if (rcond == 0) break;
       }
@@ -906,9 +906,9 @@ static lua_Number nl_rcond (lua_State *L, nl_Matrix *m, char what,
     else {
       lua_Number *e = m->data;
       index = (IDAMAX(&n, m->data, &stride) - 1) * stride;
-      rcond = norm = fabs(m->data[index]);
+      rcond = norm = FABS(m->data[index]);
       for (i = 0; i < n; i++, e += stride) {
-        lua_Number a = fabs(*e);
+        lua_Number a = FABS(*e);
         if (rcond > a) rcond = a;
         if (rcond == 0) break;
       }
@@ -1005,7 +1005,7 @@ static int nl_inv (lua_State *L, nl_Matrix *m, char what, lua_Number *rcond) {
       if (m->iscomplex) {
         nl_Complex *e = CPX(m->data);
         for (i = 0; i < n; i++, e += stride) {
-          if (cabs(*e) > 0)
+          if (CABS(*e) > 0)
             *e = 1. / *e;
           else {
             info = i + 1; break;
@@ -1015,7 +1015,7 @@ static int nl_inv (lua_State *L, nl_Matrix *m, char what, lua_Number *rcond) {
       else {
         lua_Number *e = m->data;
         for (i = 0; i < n; i++, e += stride) {
-          if (fabs(*e) > 0)
+          if (FABS(*e) > 0)
             *e = 1. / *e;
           else {
             info = i + 1; break;
@@ -1071,7 +1071,7 @@ static int nl_inv (lua_State *L, nl_Matrix *m, char what, lua_Number *rcond) {
         if (info == 0) {
           ZGETRI(&n, CPX(m->data), &lda, ipiv->data.bint,
               &qwork, &lwork, &info);
-          lua_number2int(lwork, creal(qwork));
+          lua_number2int(lwork, CREAL(qwork));
           work = nl_getbuffer(L, 2 * lwork);
           ZGETRI(&n, CPX(m->data), &lda, ipiv->data.bint,
               CPX(work->data.bnum), &lwork, &info);
@@ -1086,7 +1086,7 @@ static int nl_inv (lua_State *L, nl_Matrix *m, char what, lua_Number *rcond) {
         if (info == 0) {
           DGETRI(&n, m->data, &lda, ipiv->data.bint,
               (lua_Number *) &qwork, &lwork, &info);
-          lua_number2int(lwork, creal(qwork));
+          lua_number2int(lwork, CREAL(qwork));
           work = nl_getbuffer(L, lwork);
           DGETRI(&n, m->data, &lda, ipiv->data.bint,
               work->data.bnum, &lwork, &info);
@@ -1140,7 +1140,7 @@ static int nl_svd (lua_State *L, nl_Matrix *a, char what) {
     /* query lwork */
     ZGESVD(&jobu, &jobvt, &m, &n, data, &m, s->data, NULL, &m, NULL, &n,
         &qwork, &lwork, rwork->data.bnum, &info, 1, 1);
-    lua_number2int(lwork, creal(qwork));
+    lua_number2int(lwork, CREAL(qwork));
     work = nl_getbuffer(L, 2 * lwork);
     /* compute svd */
     ZGESVD(&jobu, &jobvt, &m, &n, data, &m, s->data,
@@ -1154,7 +1154,7 @@ static int nl_svd (lua_State *L, nl_Matrix *a, char what) {
     /* query lwork */
     DGESVD(&jobu, &jobvt, &m, &n, data, &m, s->data, NULL, &m, NULL, &n,
         (lua_Number *) &qwork, &lwork, &info, 1, 1);
-    lua_number2int(lwork, creal(qwork));
+    lua_number2int(lwork, CREAL(qwork));
     work = nl_getbuffer(L, lwork);
     /* compute svd */
     DGESVD(&jobu, &jobvt, &m, &n, data, &m, s->data,
@@ -1185,7 +1185,7 @@ static int nl_qr (lua_State *L, nl_Matrix *r, nl_Buffer *pvt) {
       /* query lwork */
       ZGEQP3(&m, &n, CPX(r->data), &m, pvt->data.bint,
           CPX(tau->data.bnum), &qwork, &lwork, rwork->data.bnum, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, 2 * lwork);
       /* compute qr */
       ZGEQP3(&m, &n, CPX(r->data), &m, pvt->data.bint,
@@ -1197,7 +1197,7 @@ static int nl_qr (lua_State *L, nl_Matrix *r, nl_Buffer *pvt) {
       /* query lwork */
       ZGEQRF(&m, &n, CPX(r->data), &m, CPX(tau->data.bnum),
           &qwork, &lwork, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, 2 * lwork);
       /* compute qr */
       ZGEQRF(&m, &n, CPX(r->data), &m, CPX(tau->data.bnum),
@@ -1219,7 +1219,7 @@ static int nl_qr (lua_State *L, nl_Matrix *r, nl_Buffer *pvt) {
       /* query lwork */
       DGEQP3(&m, &n, r->data, &m, pvt->data.bint, tau->data.bnum,
           (lua_Number *) &qwork, &lwork, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, lwork);
       /* compute qr */
       DGEQP3(&m, &n, r->data, &m, pvt->data.bint, tau->data.bnum,
@@ -1229,7 +1229,7 @@ static int nl_qr (lua_State *L, nl_Matrix *r, nl_Buffer *pvt) {
       /* query lwork */
       DGEQRF(&m, &n, r->data, &m, tau->data.bnum,
           (lua_Number *) &qwork, &lwork, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, lwork);
       /* compute qr */
       DGEQRF(&m, &n, r->data, &m, tau->data.bnum,
@@ -1280,7 +1280,7 @@ static int nl_eig (lua_State *L, nl_Matrix *m, char what, int hermitian) {
       /* query lwork */
       ZHEEV(&jobz, &uplo, &n, CPX(a->data.bnum), &n, w->data,
           &qwork, &lwork, rwork->data.bnum, &info, 1, 1);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, 2 * lwork);
       /* compute eigen decomposition */
       ZHEEV(&jobz, &uplo, &n, CPX(a->data.bnum), &n, w->data,
@@ -1301,7 +1301,7 @@ static int nl_eig (lua_State *L, nl_Matrix *m, char what, int hermitian) {
       ZGEEV(&jobvl, &jobvr, &n, CPX(a->data.bnum), &n, CPX(w->data),
           vl ? CPX(vl->data) : NULL, &n, vr ? CPX(vr->data) : NULL, &n,
           &qwork, &lwork, rwork->data.bnum, &info, 1, 1);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, 2 * lwork);
       /* compute eigen decomposition */
       ZGEEV(&jobvl, &jobvr, &n, CPX(a->data.bnum), &n, CPX(w->data),
@@ -1317,7 +1317,7 @@ static int nl_eig (lua_State *L, nl_Matrix *m, char what, int hermitian) {
       /* query lwork */
       DSYEV(&jobz, &uplo, &n, a->data.bnum, &n, w->data,
           (lua_Number *) &qwork, &lwork, &info, 1, 1);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, lwork);
       /* compute eigen decomposition */
       DSYEV(&jobz, &uplo, &n, a->data.bnum, &n, w->data,
@@ -1339,7 +1339,7 @@ static int nl_eig (lua_State *L, nl_Matrix *m, char what, int hermitian) {
           wr->data.bnum, wi->data.bnum,
           vl ? vl->data : NULL, &n, vr ? vr->data : NULL, &n,
           (lua_Number *) &qwork, &lwork, &info, 1, 1);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, lwork);
       /* compute eigen decomposition */
       DGEEV(&jobvl, &jobvr, &n, a->data.bnum, &n,
@@ -1446,7 +1446,7 @@ static int nl_ls (lua_State *L, nl_Matrix *a, nl_Matrix *b, nl_Matrix *s,
       ZGELSS(&m, &n, &nrhs, CPX(bufa->data.bnum), &lda,
           inplace ? CPX(b->data) : CPX(bufb->data.bnum), &ldb,
           s->data, &tol, rank, &qwork, &lwork, rwork->data.bnum, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, 2 * lwork);
       /* compute ls */
       ZGELSS(&m, &n, &nrhs, CPX(bufa->data.bnum), &lda,
@@ -1466,7 +1466,7 @@ static int nl_ls (lua_State *L, nl_Matrix *a, nl_Matrix *b, nl_Matrix *s,
           inplace ? CPX(b->data) : CPX(bufb->data.bnum), &ldb,
           jpvt->data.bint, &tol, rank, &qwork, &lwork,
           rwork->data.bnum, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, 2 * lwork);
       /* compute ls */
       ZGELSY(&m, &n, &nrhs, CPX(bufa->data.bnum), &lda,
@@ -1482,7 +1482,7 @@ static int nl_ls (lua_State *L, nl_Matrix *a, nl_Matrix *b, nl_Matrix *s,
       DGELSS(&m, &n, &nrhs, bufa->data.bnum, &lda,
           inplace ? b->data : bufb->data.bnum, &ldb,
           s->data, &tol, rank, (lua_Number *) &qwork, &lwork, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, lwork);
       /* compute ls */
       DGELSS(&m, &n, &nrhs, bufa->data.bnum, &lda,
@@ -1498,7 +1498,7 @@ static int nl_ls (lua_State *L, nl_Matrix *a, nl_Matrix *b, nl_Matrix *s,
       DGELSY(&m, &n, &nrhs, bufa->data.bnum, &lda,
           inplace ? b->data : bufb->data.bnum, &ldb,
           jpvt->data.bint, &tol, rank, (lua_Number *) &qwork, &lwork, &info);
-      lua_number2int(lwork, creal(qwork));
+      lua_number2int(lwork, CREAL(qwork));
       work = nl_getbuffer(L, lwork);
       /* compute ls */
       DGELSY(&m, &n, &nrhs, bufa->data.bnum, &lda,
@@ -1520,13 +1520,13 @@ static int nl_ls (lua_State *L, nl_Matrix *a, nl_Matrix *b, nl_Matrix *s,
       nl_Complex *pb = CPX(bufb->data.bnum);
       nl_Complex *px = CPX(x->data);
       for (i = 0; i < nrhs; i++, pb += m, px += n) /* each column */
-        zcopy_(&n, pb, &one, px, &one);
+        ZCOPY(&n, pb, &one, px, &one);
     }
     else {
       lua_Number *pb = bufb->data.bnum;
       lua_Number *px = x->data;
       for (i = 0; i < nrhs; i++, pb += m, px += n) /* each column */
-        dcopy_(&n, pb, &one, px, &one);
+        DCOPY(&n, pb, &one, px, &one);
     }
   }
   nl_freebuffer(work); nl_freebuffer(bufa);
@@ -1677,7 +1677,7 @@ static int matrix_set (lua_State *L) {
         }
       }
       else {
-        lua_Number rvc = creal(vc);
+        lua_Number rvc = CREAL(vc);
         if (m->section) {
           for (i = 0; i < k->size; i++, f += k->stride) {
             int e = (int) (*f);
@@ -1732,7 +1732,7 @@ static int matrix_set (lua_State *L) {
             luaL_argcheck(L, e != 0, 2, "null index");
             e = CIRC(e, m->size) - 1; /* zero based */
             if (v->iscomplex)
-              *DSHIFT(m, e) = creal(CPX(v->data)[i * v->stride]);
+              *DSHIFT(m, e) = CREAL(CPX(v->data)[i * v->stride]);
             else
               *DSHIFT(m, e) = v->data[i * v->stride];
           }
@@ -1743,7 +1743,7 @@ static int matrix_set (lua_State *L) {
             luaL_argcheck(L, e != 0, 2, "null index");
             e = CIRC(e, m->size) - 1; /* zero based */
             if (v->iscomplex)
-              m->data[e * m->stride] = creal(CPX(v->data)[i * v->stride]);
+              m->data[e * m->stride] = CREAL(CPX(v->data)[i * v->stride]);
             else
               m->data[e * m->stride] = v->data[i * v->stride];
           }
@@ -1942,7 +1942,7 @@ static int matrix_add (lua_State *L) {
       }
     }
     else {
-      lua_Number rs = creal(s);
+      lua_Number rs = CREAL(s);
       lua_Number *e = a->data;
       if (a->section) {
         for (i = 0; i < a->size; i++, e = DSHIFT(a, i))
@@ -1974,7 +1974,7 @@ static int matrix_add (lua_State *L) {
         }
       }
       else {
-        lua_Number ra = creal(alpha);
+        lua_Number ra = CREAL(alpha);
         lua_Number *e, *f;
         for (i = 0; i < a->size; i++) {
           e = a->data + nl_mshift(a, i);
@@ -1988,7 +1988,7 @@ static int matrix_add (lua_State *L) {
         ZAXPY(&b->size, &alpha, CPX(b->data), &b->stride,
             CPX(a->data), &a->stride);
       else {
-        lua_Number ra = creal(alpha);
+        lua_Number ra = CREAL(alpha);
         DAXPY(&b->size, &ra, b->data, &b->stride, a->data, &a->stride);
       }
     }
@@ -2015,7 +2015,7 @@ static int matrix_mul (lua_State *L) {
           *CSHIFT(a, i) *= s;
       }
       else {
-        lua_Number rs = creal(s);
+        lua_Number rs = CREAL(s);
         for (i = 0; i < a->size; i++) {
           *DSHIFT(a, i) *= rs;
         }
@@ -2025,7 +2025,7 @@ static int matrix_mul (lua_State *L) {
       if (a->iscomplex)
         ZSCAL(&a->size, &s, CPX(a->data), &a->stride);
       else {
-        lua_Number r = creal(s);
+        lua_Number r = CREAL(s);
         DSCAL(&a->size, &r, a->data, &a->stride);
       }
     }
@@ -2089,7 +2089,7 @@ static int matrix_div (lua_State *L) {
             *CSHIFT(a, i) /= s;
         }
         else {
-          lua_Number rs = creal(s);
+          lua_Number rs = CREAL(s);
           for (i = 0; i < a->size; i++)
             *DSHIFT(a, i) /= rs;
         }
@@ -2099,7 +2099,7 @@ static int matrix_div (lua_State *L) {
         if (a->iscomplex)
           ZSCAL(&a->size, &s, CPX(a->data), &a->stride);
         else {
-          lua_Number r = creal(s);
+          lua_Number r = CREAL(s);
           DSCAL(&a->size, &r, a->data, &a->stride);
         }
       }
@@ -2117,7 +2117,7 @@ static int matrix_div (lua_State *L) {
         }
       }
       else {
-        lua_Number rs = creal(s);
+        lua_Number rs = CREAL(s);
         lua_Number *e = a->data;
         if (a->section) {
           for (i = 0; i < a->size; i++, e = DSHIFT(a, i))
@@ -2215,23 +2215,23 @@ static int matrix_pow (lua_State *L) {
       nl_Complex *e = CPX(a->data);
       if (a->section) {
         for (i = 0; i < a->size; i++, e = CSHIFT(a, i))
-          *e = cpow(*e, s);
+          *e = CPOW(*e, s);
       }
       else {
         for (i = 0; i < a->size; i++, e += a->stride)
-          *e = cpow(*e, s);
+          *e = CPOW(*e, s);
       }
     }
     else {
-      lua_Number rs = creal(s);
+      lua_Number rs = CREAL(s);
       lua_Number *e = a->data;
       if (a->section) {
         for (i = 0; i < a->size; i++, e = DSHIFT(a, i))
-          *e = pow(*e, rs);
+          *e = POW(*e, rs);
       }
       else {
         for (i = 0; i < a->size; i++, e += a->stride)
-          *e = pow(*e, rs);
+          *e = POW(*e, rs);
       }
     }
   }
@@ -2245,7 +2245,7 @@ static int matrix_pow (lua_State *L) {
         for (i = 0; i < a->size; i++) {
           e = CPX(a->data) + nl_mshift(a, i);
           f = CPX(b->data) + nl_mshift(b, i);
-          *e = cpow(*e, *f);
+          *e = CPOW(*e, *f);
         }
       }
       else {
@@ -2253,7 +2253,7 @@ static int matrix_pow (lua_State *L) {
         for (i = 0; i < a->size; i++) {
           e = a->data + nl_mshift(a, i);
           f = b->data + nl_mshift(b, i);
-          *e = pow(*e, *f);
+          *e = POW(*e, *f);
         }
       }
     }
@@ -2261,12 +2261,12 @@ static int matrix_pow (lua_State *L) {
       if (a->iscomplex) {
         nl_Complex *e = CPX(a->data), *f = CPX(b->data);
         for (i = 0; i < a->size; i++, e += a->stride, f += b->stride)
-          *e = cpow(*e, *f);
+          *e = CPOW(*e, *f);
       }
       else {
         lua_Number *e = a->data, *f = b->data;
         for (i = 0; i < a->size; i++, e += a->stride, f += b->stride)
-          *e = pow(*e, *f);
+          *e = POW(*e, *f);
       }
     }
     if (inplace) lua_pop(L, 1); /* b */
@@ -2478,10 +2478,10 @@ static int matrix_complex (lua_State *L) {
     nl_Complex *f = CPX(data);
     if (a->iscomplex)
       for (i = 0; i < a->size; i++, f++)
-        *f = creal(*CSHIFT(a, i)) + cimag(*f) * I;
+        *f = CREAL(*CSHIFT(a, i)) + CIMAG(*f) * I;
     else
       for (i = 0; i < a->size; i++, f++)
-        *f = creal(*DSHIFT(a, i)) + cimag(*f) * I;
+        *f = CREAL(*DSHIFT(a, i)) + CIMAG(*f) * I;
   }
   else {
     stride = (a->iscomplex) ? 2 * a->stride : a->stride;
@@ -2491,17 +2491,17 @@ static int matrix_complex (lua_State *L) {
   if (!b) { /* single argument? */
     nl_Complex *e = CPX(data);
     for (i = 0; i < a->size; i++, e++)
-      *e = creal(*e); /* cimag(*e) = 0 */
+      *e = CREAL(*e); /* CIMAG(*e) = 0 */
   }
   else {
     if (b->section) {
       nl_Complex *f = CPX(data);
       if (b->iscomplex)
         for (i = 0; i < b->size; i++, f++)
-          *f = creal(*f) + cimag(*CSHIFT(b, i)) * I;
+          *f = CREAL(*f) + CIMAG(*CSHIFT(b, i)) * I;
       else
         for (i = 0; i < b->size; i++, f++)
-          *f = creal(*f) + cimag(*DSHIFT(b, i)) * I;
+          *f = CREAL(*f) + CIMAG(*DSHIFT(b, i)) * I;
     }
     else {
       stride = (b->iscomplex) ? 2 * b->stride : b->stride;
@@ -2695,7 +2695,7 @@ static int matrix_find (lua_State *L) {
         }
       }
       else {
-        lua_Number rp = creal(p);
+        lua_Number rp = CREAL(p);
         lua_Number *e = m->data;
         if (m->section) {
           for (i = 0; i < m->size && !found; i++, e = DSHIFT(m, i)) {
@@ -2875,7 +2875,7 @@ static int matrix_ifelse (lua_State *L) {
         }
       }
       else {
-        lua_Number rp = creal(p);
+        lua_Number rp = CREAL(p);
         lua_Number *e = m->data;
         for (i = 0; i < m->size; ) {
           if (*e == rp)
@@ -3078,7 +3078,7 @@ static int matrix_which (lua_State *L) {
         }
       }
       else {
-        lua_Number rp = creal(p);
+        lua_Number rp = CREAL(p);
         lua_Number *e = m->data;
         if (m->section) {
           for (i = 0; i < m->size; i++, e = DSHIFT(m, i)) {
@@ -3518,7 +3518,7 @@ static int matrix_sum (lua_State *L) { /* linear fold */
     nl_pushcomplex(L, x);
   }
   else {
-    lua_Number ra = creal(alpha), rx = creal(x);
+    lua_Number ra = CREAL(alpha), rx = CREAL(x);
     lua_Number *e = m->data;
     if (m->section) {
       if (ra == 1.0) { /* plain sum? */
@@ -3746,11 +3746,11 @@ static int matrix_linspace (lua_State *L) {
   nl_Complex a = nl_checkcomplex(L, 1);
   nl_Complex b = nl_checkcomplex(L, 2);
   int i, n, iscomplex;
-  iscomplex = (cimag(a) != 0 || cimag(b) != 0);
+  iscomplex = (CIMAG(a) != 0 || CIMAG(b) != 0);
   if (iscomplex) {
     nl_Complex *data;
     nl_Complex s = b - a;
-    n = luaL_optinteger(L, 3, cabs(s) + 1);
+    n = luaL_optinteger(L, 3, CABS(s) + 1);
     luaL_argcheck(L, n > 0, 3, "number of steps is non-positive");
     lua_settop(L, 0);
     data = lua_newuserdata(L, n * sizeof(nl_Complex));
@@ -3762,13 +3762,13 @@ static int matrix_linspace (lua_State *L) {
   }
   else {
     lua_Number *data;
-    lua_Number s = creal(b) - creal(a);
-    n = luaL_optinteger(L, 3, fabs(s) + 1);
+    lua_Number s = CREAL(b) - CREAL(a);
+    n = luaL_optinteger(L, 3, FABS(s) + 1);
     luaL_argcheck(L, n > 0, 3, "number of steps is non-positive");
     lua_settop(L, 0);
     data = lua_newuserdata(L, n * sizeof(lua_Number));
     s /= n - 1;
-    data[0] = creal(a);
+    data[0] = CREAL(a);
     for (i = 1; i < n; i++)
       data[i] = data[i - 1] + s;
     pushmatrix(L, 0, 1, &n, 1, n, NULL, data);
@@ -4030,9 +4030,9 @@ static int matrix_c (lua_State *L) {
     vc = nl_tocomplex(L, i + 1, &ic);
     if (ic) { /* number/complex? */
       if (i == 0)
-        iscomplex = (cimag(vc) != 0);
+        iscomplex = (CIMAG(vc) != 0);
       else
-        luaL_argcheck(L, iscomplex || (!iscomplex && (cimag(vc) == 0)),
+        luaL_argcheck(L, iscomplex || (!iscomplex && (CIMAG(vc) == 0)),
             i + 1, CONF_ERROR);
       d++;
     }
@@ -4055,7 +4055,7 @@ static int matrix_c (lua_State *L) {
       if (m->iscomplex)
         CPX(m->data)[d++] = vc;
       else
-        m->data[d++] = creal(vc);
+        m->data[d++] = CREAL(vc);
     }
     else {
       v = (nl_Matrix *) lua_touserdata(L, i + 1);
@@ -4619,6 +4619,7 @@ static int matrix_ls (lua_State *L) {
 }
 
 
+#if 0 /* No support for FFTW & HDF5 */
 /* {=======   Fourier Transforms   =======} */
 
 fftw_plan nl_createplan (lua_State *L,
@@ -4750,6 +4751,7 @@ static int matrix_load (lua_State *L) {
   status = H5Fclose(file_id);
   return 1;
 }
+#endif /* No support for FFTW & HDF5 */
 
 
 /* {=====================================================================
@@ -4835,12 +4837,14 @@ static const luaL_Reg lmatrix_func[] = {
   {"eig", matrix_eig},
   {"balance", matrix_balance},
   {"ls", matrix_ls},
+#if 0 /* No support for FFTW & HDF5 */
   /* FFT */
   {"fft", matrix_fft},
   {"fct", matrix_fct},
   /* HDF5 */
   {"save", matrix_save},
   {"load", matrix_load},
+#endif
   {NULL, NULL}
 };
 

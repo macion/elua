@@ -16,8 +16,10 @@
 #include <lauxlib.h>
 #include <math.h>
 #include <complex.h>
+#if 0 /* No support for FFTW & HDF5 */
 #include <fftw3.h>
 #include <hdf5.h>
+#endif
 #include "blas.h"
 #include "lapack.h"
 
@@ -26,7 +28,7 @@
 
 #if LUA_VERSION_NUM <= 501
 #define lua_rawlen lua_objlen
-#define nl_register(L,l,n) luaL_openlib(L,NULL,l,n)
+#define nl_register(L,l,n) luaL_openlib(L,NULL,l,n,0)
 #define luaL_newlibtable(L,l) \
   lua_createtable(L, 0, sizeof(l)/sizeof((l)[0]) - 1)
 #define luaL_newlib(L,l) (luaL_newlibtable(L,l), nl_register(L,l,0))
@@ -84,10 +86,13 @@ NUMLUA_API int luaopen_numlua (lua_State *L);
 
 
 /* complex */
-typedef double complex nl_Complex;
+typedef LUA_NUMBER complex nl_Complex;
 #define CPX(x) ((nl_Complex *) (x))
 
 NUMLUA_API lua_Number clogabs (nl_Complex c);
+
+#ifndef LNUM_FLOAT /* Using double */
+
 #define cunm(c) (-(c))
 #define cadd(a,b) ((a) + (b))
 #define csub(a,b) ((a) - (b))
@@ -98,6 +103,21 @@ NUMLUA_API lua_Number clogabs (nl_Complex c);
   (creal(a)<creal(b) || ((creal(a)==creal(b))&&(cimag(a)<cimag(b))))
 #define cgt(a,b) \
   (creal(a)>creal(b) || ((creal(a)==creal(b))&&(cimag(a)>cimag(b))))
+
+#else /* Not using double, so using float */
+
+#define cunmf(c) (-(c))
+#define caddf(a,b) ((a) + (b))
+#define csubf(a,b) ((a) - (b))
+#define cmulf(a,b) ((a) * (b))
+#define cdivf(a,b) ((a) / (b))
+#define ceqf(a,b) ((a) == (b))
+#define clt(a,b) \
+  (crealf(a)<crealf(b) || ((crealf(a)==crealf(b))&&(cimagf(a)<cimagf(b))))
+#define cgt(a,b) \
+  (crealf(a)>crealf(b) || ((crealf(a)==crealf(b))&&(cimagf(a)>cimagf(b))))
+
+#endif
 
 NUMLUA_API nl_Complex nl_tocomplex (lua_State *L, int narg, int *iscomplex);
 NUMLUA_API nl_Complex nl_checkcomplex (lua_State *L, int narg);
@@ -140,6 +160,24 @@ NUMLUA_API int luaopen_numlua_stat (lua_State *L);
 /* C99 mathx */
 NUMLUA_API lua_Number nl_lse (lua_Number w1, lua_Number w2);
 NUMLUA_API int luaopen_numlua_mathx (lua_State *L);
+
+#ifndef LNUM_FLOAT /* All functions operate on doubles */
+
+/* Math functions */
+#define CREAL(x)       creal(x)
+#define CIMAG(x)       cimag(x)
+#define CABS(x)        cabs(x)
+#define POW(x,a)       pow(x,a)
+#define CPOW(x,a)      cpow(x,a)
+#define FABS(x)        fabs(x)
+#define FMA(a,b,c)     fma(a,b,c)
+#define SCALBN(a,b)    scalbn(a,b)
+#define LDEXP(a,b)     ldexp(a,b)
+#define FREXP(a,b)     frexp(a,b)
+#define EXP(x)         exp(x)
+#define LOG1P(x)       log1p(x)
+#define LOG(x)         log(x)
+#define SQRT(x)        sqrt(x)
 
 /* BLAS level 1 */
 #define DSWAP dswap_
@@ -226,6 +264,110 @@ NUMLUA_API int luaopen_numlua_mathx (lua_State *L);
 #define ZGELSS zgelss_
 #define DGELSS dgelss_
 
+#else /* If we are not operating on doubles than we are using floats */
+
+/* Math functions */
+#define CREAL(x)       crealf(x)
+#define CIMAG(x)       cimagf(x)
+#define CABS(x)        cabsf(x)
+#define POW(x,a)       powf(x,a)
+#define CPOW(x,a)      cpowf(x,a)
+#define FABS(x)        fabsf(x)
+#define FMA(a,b,c)     fmaf(a,b,c)
+#define SCALBN(a,b)    scalbnf(a,b)
+#define LDEXP(a,b)     ldexpf(a,b)
+#define FREXP(a,b)     frexpf(a,b)
+#define EXP(x)         expf(x)
+#define LOG1P(x)       log1pf(x)
+#define LOG(x)         logf(x)
+#define SQRT(x)        sqrtf(x)
+
+/* BLAS level 1 */
+#define DSWAP sswap_
+#define ZSWAP cswap_
+#define DCOPY scopy_
+#define ZCOPY ccopy_
+#define DSCAL sscal_
+#define ZSCAL cscal_
+#define ZDSCAL csscal_
+#define DAXPY saxpy_
+#define ZAXPY caxpy_
+#define DDOT sdot_
+#define ZDOTC cdotc_
+#define ZDOTU cdotu_
+#define DNRM2 snrm2_
+#define DZNRM2 scnrm2_
+#define DASUM sasum_
+#define DZASUM scasum_
+#define IDAMAX isamax_
+#define IZAMAX icamax_
+/* BLAS level 2 */
+#define DTRMV strmv_
+#define DTRSV strsv_
+#define ZTRMV ctrmv_
+#define ZTRSV ctrsv_
+#define ZHER cher_
+#define DSYR ssyr_
+#define DGER sger_
+#define ZGERC cgerc_
+#define DGEMV sgemv_
+#define ZGEMV cgemv_
+/* BLAS level 3 */
+#define DTRMM strmm_
+#define DTRSM strsm_
+#define ZTRMM ctrmm_
+#define ZTRSM ctrsm_
+#define ZHERK cherk_
+#define DSYRK ssyrk_
+#define DGEMM sgemm_
+#define ZGEMM cgemm_
+
+/* LAPACK */
+/* chol */
+#define DPOTRF spotrf_
+#define ZPOTRF cpotrf_
+/* lu */
+#define DGETRF sgetrf_
+#define ZGETRF cgetrf_
+/* inv */
+#define DTRTRI strtri_
+#define ZTRTRI ctrtri_
+#define DPOTRI spotri_
+#define ZPOTRI cpotri_
+#define DGETRI sgetri_
+#define ZGETRI cgetri_
+/* rcond */
+#define DTRCON strcon_
+#define ZTRCON ctrcon_
+#define DPOCON spocon_
+#define ZPOCON cpocon_
+#define DGECON sgecon_
+#define ZGECON cgecon_
+/* svd */
+#define ZGESVD cgesvd_
+#define DGESVD sgesvd_
+/* qr */
+#define ZGEQRF cgeqrf_
+#define DGEQRF sgeqrf_
+#define ZGEQP3 cgeqp3_
+#define DGEQP3 sgeqp3_
+#define ZUNGQR cungqr_
+#define DORGQR sorgqr_
+/* eig */
+#define ZHEEV cheev_
+#define DSYEV ssyev_
+#define ZGEEV cgeev_
+#define DGEEV sgeev_
+/* balance */
+#define ZGEBAL cgebal_
+#define DGEBAL sgebal_
+/* ls */
+#define ZGELSY cgelsy_
+#define DGELSY sgelsy_
+#define ZGELSS cgelss_
+#define DGELSS sgelss_
+
+#endif
 
 /* {=================================================================
 *

@@ -80,7 +80,7 @@ NUMLUA_API nl_Complex nl_tocomplex (lua_State *L, int narg, int *iscomplex) {
   }
   if (p == NULL) { /* not complex? */
     c = lua_tonumber(L, narg);
-    *iscomplex = (creal(c) != 0 || lua_isnumber(L, narg));
+    *iscomplex = (CREAL(c) != 0 || lua_isnumber(L, narg));
   }
   else {
     c = *p;
@@ -113,15 +113,18 @@ NUMLUA_API nl_Complex *nl_pushcomplex (lua_State *L, nl_Complex c) {
   return z;
 }
 
-
+#ifndef LNUM_FLOAT /* Use double */
 NUMLUA_API lua_Number clogabs (nl_Complex c) {
-  lua_Number r = fabs(creal(c));
-  lua_Number i = fabs(cimag(c));
+#else
+NUMLUA_API lua_Number clogabsf (nl_Complex c) {
+#endif
+  lua_Number r = FABS(CIMAG(c));
+  lua_Number i = FABS(CIMAG(c));
   lua_Number t;
-  if ((r + i) == r) return log(r);
+  if ((r + i) == r) return LOG(r);
   if (i > r) { t = r; r = i; i = t; }
   t = i / r;
-  return log(r) + 0.5 * log1p(t * t);
+  return LOG(r) + 0.5 * LOG1P(t * t);
 }
 
 
@@ -132,8 +135,8 @@ NUMLUA_API lua_Number clogabs (nl_Complex c) {
 
 /* complex.newindex: there are three possible assignments:
  *  o c._ = x, in-place copy
- *  o c.r = x, creal(c) = x
- *  o c.i = x, cimag(c) = x
+ *  o c.r = x, CREAL(c) = x
+ *  o c.i = x, CIMAG(c) = x
  */
 static int complex_newindex (lua_State *L) {
   nl_Complex *c = (nl_Complex *) lua_touserdata(L, 1);
@@ -148,8 +151,8 @@ static int complex_newindex (lua_State *L) {
         luaL_typename(L, 3));
   switch (k[0]) {
     case '_': *c = x; break; /* assign */
-    case 'r': *c = creal(x) + cimag(*c) * I; break; /* real assign */
-    case 'i': *c = creal(*c) + creal(x) * I; break; /* imag assign */
+    case 'r': *c = CREAL(x) + CIMAG(*c) * I; break; /* real assign */
+    case 'i': *c = CREAL(*c) + CREAL(x) * I; break; /* imag assign */
     default: luaL_error(L, "invalid index: %s", k);
   }
   return 0;
@@ -157,10 +160,10 @@ static int complex_newindex (lua_State *L) {
 
 static int complex_tostring (lua_State *L) {
   nl_Complex *c = (nl_Complex *) lua_touserdata(L, 1);
-  if (!signbit(cimag(*c)))
-    lua_pushfstring(L, "%f+%fi", creal(*c), cimag(*c));
+  if (!signbit(CIMAG(*c)))
+    lua_pushfstring(L, "%f+%fi", CREAL(*c), CIMAG(*c));
   else
-    lua_pushfstring(L, "%f%fi", creal(*c), cimag(*c));
+    lua_pushfstring(L, "%f%fi", CREAL(*c), CIMAG(*c));
   return 1;
 }
 
@@ -169,48 +172,96 @@ static int complex_tostring (lua_State *L) {
  *    Functions
  * ======================================================================} */
 
+#ifndef LNUM_FLOAT /* Using double */
+ 
 #define cconj conj
 
-#define F0(f) \
-  static int complex_##f (lua_State *L) { \
+#define F0(fun) \
+  static int complex_##fun (lua_State *L) { \
     nl_Complex a = checkcomplex(L, 1); \
-    lua_pushnumber(L, c##f(a)); \
+    lua_pushnumber(L, c##fun(a)); \
     return 1;\
   }
 
-#define F1(f) \
-  static int complex_##f (lua_State *L) { \
+#define F1(fun) \
+  static int complex_##fun (lua_State *L) { \
     if (nl_inplace(L, 2)) { \
       nl_Complex *a = tocomplexP(L, 1); \
       if (a == NULL) nl_typeerror(L, 1, "complex"); \
-      *a = c##f(*a); \
+      *a = c##fun(*a); \
       lua_settop(L, 1); \
     } \
     else { \
       nl_Complex a = checkcomplex(L, 1); \
       nl_Complex *c = newcomplex(L); \
-      *c = c##f(a); \
+      *c = c##fun(a); \
     } \
     return 1; \
   }
 
-#define F2(f) \
-  static int complex_##f (lua_State *L) { \
+#define F2(fun) \
+  static int complex_##fun (lua_State *L) { \
     nl_Complex b = checkcomplex(L, 2); \
     if (nl_inplace(L, 3)) { \
       nl_Complex *a = tocomplexP(L, 1); \
       if (a == NULL) nl_typeerror(L, 1, "complex"); \
-      *a = c##f(*a,b); \
+      *a = c##fun(*a,b); \
       lua_settop(L, 1); \
     } \
     else { \
       nl_Complex a = checkcomplex(L, 1); \
       nl_Complex *c = newcomplex(L); \
-      *c = c##f(a,b); \
+      *c = c##fun(a,b); \
     } \
     return 1;\
   }
 
+#else /* Not using double, so using float */
+
+#define cconjf conjf
+
+#define F0(fun) \
+  static int complex_##fun (lua_State *L) { \
+    nl_Complex a = checkcomplex(L, 1); \
+    lua_pushnumber(L, c##fun##f(a)); \
+    return 1;\
+  }
+
+#define F1(fun) \
+  static int complex_##fun (lua_State *L) { \
+    if (nl_inplace(L, 2)) { \
+      nl_Complex *a = tocomplexP(L, 1); \
+      if (a == NULL) nl_typeerror(L, 1, "complex"); \
+      *a = c##fun##f(*a); \
+      lua_settop(L, 1); \
+    } \
+    else { \
+      nl_Complex a = checkcomplex(L, 1); \
+      nl_Complex *c = newcomplex(L); \
+      *c = c##fun##f(a); \
+    } \
+    return 1; \
+  }
+
+#define F2(fun) \
+  static int complex_##fun (lua_State *L) { \
+    nl_Complex b = checkcomplex(L, 2); \
+    if (nl_inplace(L, 3)) { \
+      nl_Complex *a = tocomplexP(L, 1); \
+      if (a == NULL) nl_typeerror(L, 1, "complex"); \
+      *a = c##fun##f(*a,b); \
+      lua_settop(L, 1); \
+    } \
+    else { \
+      nl_Complex a = checkcomplex(L, 1); \
+      nl_Complex *c = newcomplex(L); \
+      *c = c##fun##f(a,b); \
+    } \
+    return 1;\
+  }
+
+#endif
+ 
 F1(unm)
 F2(add)
 F2(sub)
@@ -253,7 +304,7 @@ static int complexMT__call (lua_State *L) {
   lua_remove(L, 1); /* class table */
   c = pushcomplex(L, checkcomplex(L, 1));
   if (lua_isnumber(L, 2)) /* set imag? */
-    *c = creal(*c) + lua_tonumber(L, 2) * I;
+    *c = CREAL(*c) + lua_tonumber(L, 2) * I;
   return 1;
 }
 

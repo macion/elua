@@ -208,7 +208,9 @@ NUMLUA_API int luaopen_numlua_base (lua_State *L) {
 static const luaL_Reg numlua_modules[] = {
   {NUMLUA_LIBNAME,  luaopen_numlua_base},
   {COMPLEX_LIBNAME, luaopen_numlua_complex},
+#if 0 /* No support for FFTW */
   {FFT_LIBNAME, luaopen_numlua_fft},
+#endif
   {MATRIX_LIBNAME, luaopen_numlua_lmatrix},
   {RNG_LIBNAME, luaopen_numlua_rng},
   {STAT_LIBNAME, luaopen_numlua_stat},
