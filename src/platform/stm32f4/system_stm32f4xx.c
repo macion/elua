@@ -400,7 +400,14 @@ static void SetSysClock(void)
 #else
     const int flash_latency = FLASH_ACR_LATENCY_5WS;
 #endif
-    FLASH->ACR = FLASH_ACR_PRFTEN |FLASH_ACR_ICEN |FLASH_ACR_DCEN | flash_latency;
+
+    /* Disable ART Accelerator prefetch, which causes hard-faults for specific 
+     * revisions of stm32f4x processor, e.g. existing on stm32f4discovery
+     */
+    if (DBGMCU_GetREVID() == 0x2000 || DBGMCU_GetREVID() == 0x1000)
+      FLASH->ACR =              0x0 |FLASH_ACR_ICEN |FLASH_ACR_DCEN | flash_latency;
+    else
+      FLASH->ACR = FLASH_ACR_PRFTEN |FLASH_ACR_ICEN |FLASH_ACR_DCEN | flash_latency;
 
     /* Select the main PLL as system clock source */
     RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
