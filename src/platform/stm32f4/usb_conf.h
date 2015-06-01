@@ -248,6 +248,7 @@
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 
 /* __packed keyword used to decrease the data type alignment to 1-byte */
+#ifndef __packed
 #if defined (__CC_ARM)         /* ARM Compiler */
   #define __packed    __packed
 #elif defined (__ICCARM__)     /* IAR Compiler */
@@ -257,6 +258,7 @@
 #elif defined   (__TASKING__)  /* TASKING Compiler */
   #define __packed    __unaligned
 #endif /* __CC_ARM */
+#endif /* __packed */
 
 /**
   * @}
